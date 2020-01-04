@@ -1,6 +1,32 @@
 * ReadMe
 A CLI for quickly counting cards remaining in trello lists
 
-* ToDo
-- [ ] Parameterize board id
-- [ ] Parameterize filter function
+#+BEGIN_SRC bash
+Card Counter 0.1.0
+Justin Barclay <justincbarclay@gmail.com>
+Counts the number of cards that exist per list on a trello board.
+
+USAGE:
+    card-counter [OPTIONS] --board-id <ID>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -b, --board-id <ID>      The ID of the board where the cards are meant to be counted from.
+    -f, --filter <FILTER>    Removes all list with a name that contains the substring FILTER
+#+END_SRC
+** Run
+To run card-counter it expects to have your ~trello api key~ and ~trello api token~ stored as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~. For further documentation on how to get an api key and token from trello, read the documentation at https://developers.trello.com/page/authorization.
+#+BEGIN_SRC bash
+export TRELLO_API_KEY=""
+export TRELLO_API_TOKEN=""
+card-counter -b ID -f FILTER
+#+END_SRC
+
+** Build
+#+BEGIN_SRC bash
+cargo build --release
+./target/release/card-counter -b ID -f FILTER
+#+END_SRC
