@@ -1,0 +1,6 @@
+* ReadMe
+A CLI for quickly counting cards remaining in trello lists
+
+* ToDo
+- [ ] Parameterize board id
+- [ ] Parameterize filter function
