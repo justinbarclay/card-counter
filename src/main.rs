@@ -6,23 +6,27 @@ mod trello;
 
 use trello::{List, Card};
 
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn get_card_count(board_id: &str, filter: Option<&str>) -> Result<(), Box<dyn std::error::Error>>{
   let api_key = env::var("TRELLO_API_KEY")?;
   let api_token = env::var("TRELLO_API_TOKEN")?;
 
   let client = reqwest::Client::new();
-  let lists: Vec<List> = client.get(&format!("https://api.trello.com/1/boards/3em95wSl/lists?key={}&token={}", api_key, api_token))
+  let lists: Vec<List> = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, api_key, api_token))
     .send()
     .await?
     .json()
     .await?;
 
   let filtered_lists = lists.iter().fold(Vec::new(), |mut container, list| {
-    if !list.name.contains("[NoBurn]") {
-      container.push(list);
-    }
+    match filter {
+      Some(value) => {
+        if !list.name.contains(value) {
+          container.push(list);
+        }
+      },
+      None => container.push(list)
+    };
+
     container
   });
 
