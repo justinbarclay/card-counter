@@ -1,4 +1,7 @@
 use std::env;
+
+use clap::{Arg, App};
+
 mod trello;
 
 use trello::{List, Card};
@@ -34,4 +37,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   }
 
   Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+  let matches = App::new("Card Counter")
+    .version("0.1.0")
+    .author("Justin Barclay <justincbarclay@gmail.com>")
+    .about("Counts the number of cards that exist per list on a trello board.")
+    .arg(Arg::with_name("board_id")
+         .short("b")
+         .long("board-id")
+         .value_name("ID")
+         .required(true)
+         .help("The ID of the board where the cards are meant to be counted from.")
+         .takes_value(true))
+    .arg(Arg::with_name("filter")
+         .short("f")
+         .long("filter")
+         .value_name("FILTER")
+         .help("Removes all list with a name that contains the substring FILTER")
+         .takes_value(true))
+    .get_matches();
+  let filter: Option<&str> = matches.value_of("filter");
+  let board_id = matches.value_of("board_id").unwrap();
+  get_card_count(&board_id, filter).await?;
+  Ok(())
+
 }
