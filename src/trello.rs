@@ -1,7 +1,13 @@
 /// Structures for serializing and de-serializing responses from Trello
 use serde::{Serialize, Deserialize};
+// Unofficial struct to hold the key and token for working with the trello api
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone)]
+pub struct Auth{
+  pub key: String,
+  pub token: String
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Board {
   pub id: String,
 
@@ -12,12 +18,12 @@ pub struct Board {
   #[serde(rename = "descData")]
   pub desc_data: Option<String>,
 
-  pub closed: bool,
+  pub closed: Option<bool>,
 
   #[serde(rename = "idOrganization")]
   pub id_organization: Option<String>,
 
-  pub pinned: bool,
+  pub pinned: Option<bool>,
 
   pub url: String,
 
