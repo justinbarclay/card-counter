@@ -16,7 +16,7 @@ jobs:
           - os: macOS-latest
             rust: stable
             artifact_name: card-counter
-            release_name: card-counter
+            release_name: card-counter-darwin
           - os: windows-latest
             rust: stable
             artifact_name: card-counter.exe
@@ -24,7 +24,7 @@ jobs:
           - os: ubuntu-latest
             rust: stable
             artifact_name: card-counter
-            release_name: card-counter
+            release_name: card-counter-linux
     steps:
       - name: Setup Rust
         uses: hecrj/setup-rust-action@master
