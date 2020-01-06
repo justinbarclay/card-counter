@@ -9,24 +9,26 @@ mod trello;
 use trello::{Board, List, Card, Auth};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
-fn check_for_auth() -> Auth{
+fn check_for_auth() -> Option<Auth>{
   let key: String = match env::var("TRELLO_API_KEY"){
     Ok(value) => value,
     Err(_) => {
-      panic!("Tello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+      eprintln!("Tello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+      return None
     }
   };
   let token: String = match env::var("TRELLO_API_TOKEN"){
     Ok(value) => value,
     Err(_) => {
-      panic!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}", key);
+      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}", key);
+      return None
     }
   };
 
-  Auth{
+  Some(Auth{
     key,
     token
-  }
+  })
 }
 
 /// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
@@ -90,39 +92,41 @@ async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Error>> 
      .to_string())
 }
 
-  // Run all of network code asynchronously using tokio and await
-  #[tokio::main]
-  async fn main() -> Result<(), Box<dyn std::error::Error>> {
+// Run all of network code asynchronously using tokio and await
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    // TODO: Pull this out to yaml at some point
-    let matches = App::new("Card Counter")
-      .version("0.1.0")
-      .author("Justin Barclay <justincbarclay@gmail.com>")
-      .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
-      .arg(Arg::with_name("board_id")
-           .short("b")
-           .long("board-id")
-           .value_name("ID")
-           .help("The ID of the board where the cards are meant to be counted from.")
-           .takes_value(true))
-      .arg(Arg::with_name("filter")
-           .short("f")
-           .long("filter")
-           .value_name("FILTER")
-           .help("Removes all list with a name that contains the substring FILTER")
-           .takes_value(true))
-      .get_matches();
+  // TODO: Pull this out to yaml at some point
+  let matches = App::new("Card Counter")
+    .version("0.1.0")
+    .author("Justin Barclay <justincbarclay@gmail.com>")
+    .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
+    .arg(Arg::with_name("board_id")
+         .short("b")
+         .long("board-id")
+         .value_name("ID")
+         .help("The ID of the board where the cards are meant to be counted from.")
+         .takes_value(true))
+    .arg(Arg::with_name("filter")
+         .short("f")
+         .long("filter")
+         .value_name("FILTER")
+         .help("Removes all list with a name that contains the substring FILTER")
+         .takes_value(true))
+    .get_matches();
 
-    let auth: Auth  = check_for_auth();
+  match  check_for_auth(){
+    Some(auth) => {
+      // Parse arguments, if board_id isn't found
+      let filter: Option<&str> = matches.value_of("filter");
+      let board_id = match matches.value_of("board_id"){
+        Some(id) => id.to_string(),
+        None => get_board_id(auth.clone()).await?
+      };
 
-    // Parse arguments, if board_id isn't found
-    let filter: Option<&str> = matches.value_of("filter");
-    let board_id = match matches.value_of("board_id"){
-      Some(id) => id.to_string(),
-      None => get_board_id(auth.clone()).await?
-    };
-
-    get_card_count(auth.clone(), &board_id, filter).await?;
-
-    Ok(())
+      get_card_count(auth.clone(), &board_id, filter).await?;
+      Ok(())
+    },
+    None => std::process::exit(1)
   }
+}
