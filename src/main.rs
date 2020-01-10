@@ -20,7 +20,8 @@ fn check_for_auth() -> Option<Auth>{
   let token: String = match env::var("TRELLO_API_TOKEN"){
     Ok(value) => value,
     Err(_) => {
-      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}", key);
+      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}
+\n and set the token as the environment variable TRELLO_API_TOKEN", key);
       return None
     }
   };
