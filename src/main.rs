@@ -1,11 +1,13 @@
 use std::env;
 use clap::{Arg, App};
 
+#[macro_use] extern crate prettytable;
+
 mod trello;
 mod score;
 
 use trello::Auth;
-use score::{get_board_id, get_lists, build_decks, Deck};
+use score::{get_board_id, get_lists, build_decks, print_decks};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
@@ -64,6 +66,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       };
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;
+      let decks = build_decks(auth.clone(), cards).await?;
+      print_decks(decks);
       Ok(())
     },
     None => std::process::exit(1)

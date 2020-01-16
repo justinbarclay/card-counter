@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use dialoguer::Select;
-
+use prettytable::Table;
 use regex::Regex;
 
 use crate::trello::{Board, Card, Auth, List};
@@ -133,6 +133,18 @@ fn get_score(maybe_points: &str) -> Option<i32>{
     },
     None => None
   }
+}
+
+pub fn print_decks(decks: Vec<Deck>) -> (){
+  let mut table = Table::new();
+
+  table.add_row(row!["List", "cards", "score", "unscored"]);
+
+  for deck in decks {
+    table.add_row(row![deck.name, deck.size, deck.score, deck.unscored]);
+  }
+
+  table.printstd();
 }
 
 pub mod test{
