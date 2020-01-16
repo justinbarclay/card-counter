@@ -114,11 +114,17 @@ pub async fn build_decks(auth: Auth, lists: Vec<List>) ->  Result< Vec<Deck>, Bo
 /// Extracts a score from a trello card, based on using [] or (). If no score is found a 0 is returned
 fn get_score(maybe_points: &str) -> Option<i32>{
   // this will capture on "(0)" or "[0]" where 0 is an arbitrary sized digit
-  let re = Regex::new(r"\[(\d+)\]|\((\d+)\)").unwrap();
-  let cap = match re.captures(&maybe_points) {
+  let square_brackets = Regex::new(r"\[(\d+)\]").unwrap();
+  let round_brackets = Regex::new(r"\((\d+)\)").unwrap();
+  let cap = match square_brackets.captures(&maybe_points) {
     Some(cap) => cap,
     // Early exit
-    None => return None
+    None => {
+      match round_brackets.captures(&maybe_points){
+        Some(other_cap) => other_cap,
+        None => return None
+      }
+    }
   };
 
   match cap.get(0) {
@@ -180,15 +186,21 @@ pub mod test{
     assert_eq!(get_score("[9](z)"), Some(9));
     assert_eq!(get_score("[](9)"), Some(9));
     assert_eq!(get_score("[9]()"), Some(9));
-
-    // Square brackets should be prioritized over round brackets
-    // assert_eq!(get_score("(9)[10]"), Some(10));
-
     assert_eq!(get_score("[9z]()"), None);
   }
 
   #[test]
   fn get_score_handles_arbitrarily_sized_digits(){
     assert_eq!(get_score("[100000000](9)"), Some(100000000));
+  }
+
+  #[test]
+  fn get_score_prioritizes_square_brackets(){
+    // Square brackets should be prioritized over round brackets
+    assert_eq!(get_score("(9)[10]"), Some(10));
+    assert_eq!(get_score("[10](9)"), Some(10));
+
+    assert_eq!(get_score("(10)[9]"), Some(9));
+    assert_eq!(get_score("[9](10)"), Some(9));
   }
 }
