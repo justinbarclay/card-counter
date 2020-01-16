@@ -1,6 +1,6 @@
 [package]
 name = "card-counter"
-version = "0.1.0"
+version = "0.2.1"
 authors = ["Justin Barclay <justincbarclay@gmail.com>"]
 edition = "2018"
 
