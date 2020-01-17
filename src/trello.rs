@@ -15,9 +15,6 @@ pub struct Board {
 
   pub desc: String,
 
-  #[serde(rename = "descData")]
-  pub desc_data: Option<String>,
-
   pub closed: Option<bool>,
 
   #[serde(rename = "idOrganization")]
