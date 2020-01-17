@@ -1,8 +1,8 @@
-* ReadMe
+* README
 A CLI for quickly counting cards remaining in trello lists
 
 #+BEGIN_SRC bash
-Card Counter 0.1.0
+Card Counter 0.2.2
 Justin Barclay <justincbarclay@gmail.com>
 Counts the number of cards that exist per list on a trello board.
 
