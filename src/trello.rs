@@ -6,6 +6,7 @@ pub struct Auth{
   pub key: String,
   pub token: String
 }
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Board {
   pub id: String,

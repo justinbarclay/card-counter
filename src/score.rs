@@ -164,7 +164,7 @@ fn get_score(maybe_points: &str) -> Option<Score>{
 pub fn print_decks(decks: Vec<Deck>) -> (){
   let mut table = Table::new();
 
-  table.add_row(row!["List", "cards", "score","estimatedx", "unscored"]);
+  table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
 
   for deck in decks {
     table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
