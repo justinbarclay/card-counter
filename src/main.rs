@@ -1,13 +1,17 @@
 use std::env;
+use std::io::prelude::*;
 use clap::{Arg, App};
 
 #[macro_use] extern crate prettytable;
 
 mod trello;
 mod score;
+mod history;
 
 use trello::Auth;
-use score::{get_board_id, get_lists, build_decks, print_decks};
+use score::{get_board_id, get_lists, build_decks, print_decks, Deck};
+use serde_json;
+use history::file;
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
@@ -31,6 +35,16 @@ fn check_for_auth() -> Option<Auth>{
     key,
     token
   })
+}
+
+fn save_history(decks: &[Deck]) -> std::io::Result<()>{
+  let mut history = file::history()?;
+  let json = match serde_json::to_string(decks) {
+    Ok(json) => json,
+    Err(err) => panic!("{}", err)
+  };
+  history.write_all(json.as_bytes())?;
+  Ok(())
 }
 
 // Run all of network code asynchronously using tokio and await
@@ -67,7 +81,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
-      print_decks(decks);
+      print_decks(&decks);
+
+      save_history(&decks)?;
       Ok(())
     },
     None => std::process::exit(1)
