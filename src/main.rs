@@ -5,9 +5,11 @@ use clap::{Arg, App};
 
 mod trello;
 mod score;
+mod database;
 
 use trello::Auth;
 use score::{get_board_id, get_lists, build_decks, print_decks};
+use database::file::update_local_database;
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
@@ -67,7 +69,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
-      print_decks(decks);
+      print_decks(&decks);
+
+      update_local_database(&board_id, &decks)?;
       Ok(())
     },
     None => std::process::exit(1)

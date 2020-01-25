@@ -5,9 +5,11 @@ use dialoguer::Select;
 use prettytable::Table;
 use regex::Regex;
 use regex::Captures;
+use serde::{Serialize, Deserialize};
 use crate::trello::{Board, Card, Auth, List};
 
 /// A deck represents some summary data about a list of Trello cards
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Deck{
   // Is the name of the list that the Deck represents
   pub name: String,
@@ -161,7 +163,7 @@ fn get_score(maybe_points: &str) -> Option<Score>{
     })
 }
 
-pub fn print_decks(decks: Vec<Deck>) -> (){
+pub fn print_decks(decks: &[Deck]) -> (){
   let mut table = Table::new();
 
   table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
