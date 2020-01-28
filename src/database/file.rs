@@ -51,7 +51,7 @@ fn get_file(name: &str) -> std::io::Result<File>{
 
 /// Updates or creates a local database and inserts the current set of decks as an entry
 ///  under board_id, given the current time stamp.
-/// Ex
+/// Ex:
 /// ```
 /// {
 ///   "56eab922556b7a05c2f3b25e": {
@@ -90,7 +90,7 @@ pub fn update_local_database(board_id: &str, decks: &[Deck]) -> std::io::Result<
     Err(err) => panic!("{}", err)
   };
   // Need to reset seek position due to reader setting it to EOF
-  writer.seek(SeekFrom::Start(0));
+  writer.seek(SeekFrom::Start(0))?;
   writer.write_all(json.as_bytes())?;
   Ok(())
 }
@@ -110,6 +110,7 @@ fn add_entry(db: &mut HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str, 
     }
   };
 }
+
 /// Opens and returns file handle for the config file. If no file is found it creates ones.
 pub fn config() -> std::io::Result<File>{
   get_file(CONFIG)

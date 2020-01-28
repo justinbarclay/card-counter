@@ -56,6 +56,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          .value_name("FILTER")
          .help("Removes all list with a name that contains the substring FILTER")
          .takes_value(true))
+    .arg(Arg::with_name("save")
+         .short("s")
+         .long("save")
+         .value_name("SAVE")
+         .help("Save the current request in the database. Defaults to true.")
+         .default_value("true")
+         .takes_value(true))
     .get_matches();
 
   match  check_for_auth(){
@@ -71,7 +78,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       let decks = build_decks(auth.clone(), cards).await?;
       print_decks(&decks);
 
-      update_local_database(&board_id, &decks)?;
+      match matches.value_of("save"){
+        Some("true") => update_local_database(&board_id, &decks)?,
+        _ => ()
+      }
       Ok(())
     },
     None => std::process::exit(1)
