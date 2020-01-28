@@ -9,7 +9,7 @@ mod history;
 
 use trello::Auth;
 use score::{get_board_id, get_lists, build_decks, print_decks};
-use history::file::update_local_database;
+use database::file::update_local_database;
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
