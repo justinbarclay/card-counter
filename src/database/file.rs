@@ -132,10 +132,7 @@ fn add_entry(db: &mut HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str, 
   };
 }
 
-pub fn get_latest_entry(
-  db: HashMap<String, HashMap<u64, Vec<Deck>>>,
-  board_id: &str,
-) -> std::io::Result<Vec<Deck>> {
+pub fn get_latest_entry(db: HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str) -> std::io::Result<Vec<Deck>> {
   let board = match db.get(board_id) {
     Some(board) => board,
     None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,

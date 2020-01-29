@@ -7,6 +7,7 @@ use regex::Regex;
 use regex::Captures;
 use serde::{Serialize, Deserialize};
 use std::convert::TryInto;
+use chrono::NaiveDateTime;
 use crate::trello::{Board, Card, Auth, List};
 use crate::database::file::{get_database, get_latest_entry};
 /// A deck represents some summary data about a list of Trello cards
@@ -164,6 +165,8 @@ fn get_score(maybe_points: &str) -> Option<Score>{
     })
 }
 
+
+// Testable
 pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>{
   let mut collection = HashMap::new();
   collection.insert("cards".to_string(), (new_deck.size - old_deck.size).try_into().unwrap());
@@ -187,20 +190,29 @@ pub fn print_decks(decks: &[Deck]){
 }
 
 
-// fn get_date(database: HashMap<String, HashMap<u64, Deck>>, board_id: &str) -> Date {
-//   let database.get(board_id);
-//   let name_index: usize = Select::new()
-//     .with_prompt("Select a board: ")
-//     .items()
-//     .default(0)
-//     .interact()?;
-// }
+fn get_date(database: HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str) -> Result<u64, Box<dyn std::error::Error>> {
+  let board = match database.get(board_id){
+    Some(board) => board,
+    None => panic!("No board found with that id!")
+  };
+
+  let keys = board.keys();
+  let items: Vec<NaiveDateTime> = keys.clone().map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0)).collect();
+  let index: usize = Select::new()
+    .with_prompt("Select a date: ")
+    .items(&items)
+    .default(0)
+    .interact()?;
+  println!("{}", index);
+  Ok(*keys.clone().nth(index).unwrap())
+}
+
 pub fn print_delta(decks: &[Deck], board_id: &str)-> std::io::Result<()>{
   let mut table = Table::new();
 
   table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
   let old_decks = get_latest_entry(get_database()?, board_id)?;
-
+  get_date(get_database()?, board_id);
   for deck in decks {
     let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
                                          if maybe_deck.name == deck.name{
