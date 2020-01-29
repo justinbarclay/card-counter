@@ -8,7 +8,7 @@ mod score;
 mod database;
 
 use trello::Auth;
-use score::{get_board_id, get_lists, build_decks, print_decks};
+use score::{get_board_id, get_lists, build_decks, print_decks, print_delta};
 use database::file::update_local_database;
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
@@ -63,6 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          .help("Save the current request in the database. Defaults to true.")
          .default_value("true")
          .takes_value(true))
+    .arg(Arg::with_name("detailed")
+         .short("d")
+         .long("detailed")
+         .help("Prints detailed stats for your trello lists, including the change in cards and scores from a previous run."))
     .get_matches();
 
   match  check_for_auth(){
@@ -76,7 +80,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
-      print_decks(&decks);
+      if matches.is_present("detailed") {
+        print_delta(&decks, &board_id)?;
+      } else {
+        print_decks(&decks);
+      }
 
       match matches.value_of("save"){
         Some("true") => update_local_database(&board_id, &decks)?,

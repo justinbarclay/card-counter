@@ -132,5 +132,26 @@ fn add_entry(db: &mut HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str, 
   };
 }
 
+pub fn get_latest_entry(
+  db: HashMap<String, HashMap<u64, Vec<Deck>>>,
+  board_id: &str,
+) -> std::io::Result<Vec<Deck>> {
+  let board = match db.get(board_id) {
+    Some(board) => board,
+    None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,
+                                           format!("Can not find board with id {}", board_id).to_string()))
+  };
+  let mut max = 0u64;
 
+  for key in board.keys(){
+    if key.clone() > max{
+      max = key.clone();
+    }
+  }
+
+  match board.get(&max){
+    Some(decks) => Ok(decks.to_vec()),
+    None => Err(std::io::Error::new(std::io::ErrorKind::InvalidData,
+                                           format!("Can not find board with id {}", board_id).to_string()))
+  }
 }

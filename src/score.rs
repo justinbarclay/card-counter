@@ -6,8 +6,9 @@ use prettytable::Table;
 use regex::Regex;
 use regex::Captures;
 use serde::{Serialize, Deserialize};
+use std::convert::TryInto;
 use crate::trello::{Board, Card, Auth, List};
-
+use crate::database::file::{get_database, get_latest_entry};
 /// A deck represents some summary data about a list of Trello cards
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Deck{
@@ -163,7 +164,17 @@ fn get_score(maybe_points: &str) -> Option<Score>{
     })
 }
 
-pub fn print_decks(decks: &[Deck]) -> (){
+pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>{
+  let mut collection = HashMap::new();
+  collection.insert("cards".to_string(), (new_deck.size - old_deck.size).try_into().unwrap());
+  collection.insert("score".to_string(), (new_deck.score - old_deck.score).try_into().unwrap());
+  collection.insert("unscored".to_string(), (new_deck.unscored - old_deck.unscored).try_into().unwrap());
+  collection.insert("estimated".to_string(), (new_deck.estimated - old_deck.estimated).try_into().unwrap());
+
+  collection
+}
+
+pub fn print_decks(decks: &[Deck]){
   let mut table = Table::new();
 
   table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
@@ -173,6 +184,53 @@ pub fn print_decks(decks: &[Deck]) -> (){
   }
 
   table.printstd();
+}
+
+
+// fn get_date(database: HashMap<String, HashMap<u64, Deck>>, board_id: &str) -> Date {
+//   let database.get(board_id);
+//   let name_index: usize = Select::new()
+//     .with_prompt("Select a board: ")
+//     .items()
+//     .default(0)
+//     .interact()?;
+// }
+pub fn print_delta(decks: &[Deck], board_id: &str)-> std::io::Result<()>{
+  let mut table = Table::new();
+
+  table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
+  let old_decks = get_latest_entry(get_database()?, board_id)?;
+
+  for deck in decks {
+    let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
+                                         if maybe_deck.name == deck.name{
+                                           Some(maybe_deck.clone())
+                                         }else if match_deck.is_some(){
+                                           match_deck
+                                         } else {
+                                           None
+                                         });
+
+    match matching_deck{
+      Some(old_deck) => {
+        let delta = calculate_delta(&old_deck, deck);
+        let cards = format!("{} ({})",deck.size, delta.get("cards").unwrap());
+        let score = format!("{} ({})",deck.score, delta.get("score").unwrap());
+        let estimated = format!("{} ({})",deck.estimated, delta.get("estimated").unwrap());
+        let unscored = format!("{} ({})",deck.unscored, delta.get("unscored").unwrap());
+
+        table.add_row(row![deck.name, cards, score, estimated, unscored]);
+      },
+
+      None => {
+        table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
+      }
+    }
+  }
+
+  table.printstd();
+  println!("* Printing in detailed mode. Numbers in () mark the difference from the last time card-counter was run and saved data.");
+  Ok(())
 }
 
 pub mod test{
