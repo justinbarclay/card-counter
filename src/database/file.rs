@@ -49,6 +49,41 @@ fn get_file(name: &str) -> std::io::Result<File>{
     .open(path)
 }
 
+/// Opens and returns file handle for the config file. If no file is found it creates ones.
+fn config_file() -> std::io::Result<File>{
+  get_file(CONFIG)
+}
+
+/// Opens and returns the file handle for the history file. If no file is found it creates ones.
+fn database_file() -> std::io::Result<File>{
+  get_file(DATABASE)
+}
+
+pub fn get_database() -> std::io::Result<HashMap<String, HashMap<u64, Vec<Deck>>>>{
+  let database = database_file()?;
+  let reader = BufReader::new(&database);
+
+  match serde_json::from_reader(reader){
+    Ok(db) => Ok(db),
+    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Can not read file as JSON"))
+  }
+}
+
+pub fn save_database(db: HashMap<String, HashMap<u64, Vec<Deck>>>) -> std::io::Result<()>{
+  // Two different error types can occur here. io::Error and JSON serialization error
+  let mut writer = BufWriter::new(database_file()?);
+
+    // Save the json database to file
+  let json = match serde_json::to_string(&db) {
+    Ok(json) => json,
+    // TODO: Handle error type and convert to a single error
+    Err(err) => panic!("{}", err)
+  };
+  writer.seek(SeekFrom::Start(0))?;
+  writer.write_all(json.as_bytes())?;
+  Ok(())
+}
+
 /// Updates or creates a local database and inserts the current set of decks as an entry
 ///  under board_id, given the current time stamp.
 /// Ex:
@@ -67,15 +102,8 @@ fn get_file(name: &str) -> std::io::Result<File>{
 /// }
 /// ```
 pub fn update_local_database(board_id: &str, decks: &[Deck]) -> std::io::Result<()>{
-  let database = database()?;
-  let reader = BufReader::new(&database);
-  let mut writer = BufWriter::new(&database);
-
+  let mut db = get_database()?;
   // Read from database
-  let mut db: HashMap<String, HashMap<u64, Vec<Deck>>> = match serde_json::from_reader(reader){
-    Ok(db) => db,
-    Err(_) => HashMap::new()
-  };
 
   // Generate a new entry and update the database
   let unix_time = match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
@@ -83,15 +111,8 @@ pub fn update_local_database(board_id: &str, decks: &[Deck]) -> std::io::Result<
     Err(_) => panic!("Unable to get current UNIX time"),
   };
   add_entry(&mut db, board_id, unix_time, decks);
-
-  // Save the json database to file
-  let json = match serde_json::to_string(&db) {
-    Ok(json) => json,
-    Err(err) => panic!("{}", err)
-  };
   // Need to reset seek position due to reader setting it to EOF
-  writer.seek(SeekFrom::Start(0))?;
-  writer.write_all(json.as_bytes())?;
+  save_database(db)?;
   Ok(())
 }
 
@@ -111,12 +132,5 @@ fn add_entry(db: &mut HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str, 
   };
 }
 
-/// Opens and returns file handle for the config file. If no file is found it creates ones.
-pub fn config() -> std::io::Result<File>{
-  get_file(CONFIG)
-}
 
-/// Opens and returns the file handle for the history file. If no file is found it creates ones.
-pub fn database() -> std::io::Result<File>{
-  get_file(DATABASE)
 }
