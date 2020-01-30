@@ -169,10 +169,11 @@ fn get_score(maybe_points: &str) -> Option<Score>{
 // Testable
 pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>{
   let mut collection = HashMap::new();
-  collection.insert("cards".to_string(), (new_deck.size - old_deck.size).try_into().unwrap());
-  collection.insert("score".to_string(), (new_deck.score - old_deck.score).try_into().unwrap());
-  collection.insert("unscored".to_string(), (new_deck.unscored - old_deck.unscored).try_into().unwrap());
-  collection.insert("estimated".to_string(), (new_deck.estimated - old_deck.estimated).try_into().unwrap());
+
+  collection.insert("cards".to_string(), new_deck.size as i32 - old_deck.size as i32);
+  collection.insert("score".to_string(), new_deck.score as i32 - old_deck.score as i32);
+  collection.insert("unscored".to_string(), new_deck.unscored as i32 - old_deck.unscored as i32);
+  collection.insert("estimated".to_string(), new_deck.estimated as i32 - old_deck.estimated as i32);
 
   collection
 }
