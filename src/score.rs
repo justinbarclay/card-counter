@@ -208,12 +208,18 @@ fn get_date(database: &HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str)
   Ok(keys[index])
 }
 
-pub fn print_delta(decks: &[Deck], board_id: &str)-> std::io::Result<()>{
+pub fn print_delta(decks: &[Deck], board_id: &str)-> Result<(), Box<dyn std::error::Error>>{
   let mut table = Table::new();
 
   table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
-  let old_decks = get_latest_entry(get_database()?, board_id)?;
-  get_date(get_database()?, board_id);
+  let mut database = get_database()?;
+  let date = get_date(&database, board_id)?;
+
+  let old_decks = database.entry(board_id.to_string())
+    .or_insert(HashMap::new())
+    .entry(date)
+    .or_insert(Vec::new()).to_vec();
+
   for deck in decks {
     let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
                                          if maybe_deck.name == deck.name{
