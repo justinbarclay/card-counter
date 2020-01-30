@@ -53,7 +53,8 @@ pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Erro
   });
 
   // Pull out names and get user to select a board name
-  let board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
+  let mut board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
+  board_names.sort();
   let name_index: usize = Select::new()
     .with_prompt("Select a board: ")
     .items(&board_names)
