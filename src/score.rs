@@ -190,21 +190,22 @@ pub fn print_decks(decks: &[Deck]){
 }
 
 
-fn get_date(database: HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str) -> Result<u64, Box<dyn std::error::Error>> {
+fn get_date(database: &HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str) -> Result<u64, Box<dyn std::error::Error>> {
   let board = match database.get(board_id){
     Some(board) => board,
     None => panic!("No board found with that id!")
   };
 
-  let keys = board.keys();
-  let items: Vec<NaiveDateTime> = keys.clone().map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0)).collect();
+  let mut keys: Vec<u64> = board.keys().map(|key| key.clone()).collect();
+  keys.sort();
+  let items: Vec<NaiveDateTime> = keys.iter().map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0)).collect();
   let index: usize = Select::new()
     .with_prompt("Select a date: ")
     .items(&items)
     .default(0)
     .interact()?;
-  println!("{}", index);
-  Ok(*keys.clone().nth(index).unwrap())
+
+  Ok(keys[index])
 }
 
 pub fn print_delta(decks: &[Deck], board_id: &str)-> std::io::Result<()>{
