@@ -23,7 +23,6 @@ pub struct Deck{
   pub unscored: i32,
   // Represents the estimated effort for all cards in the list during the sprint
   pub estimated: i32
-
 }
 
 /// A score is a result of a user estimating the effort required for a card `()` and then optionally

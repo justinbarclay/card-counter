@@ -59,13 +59,19 @@ fn database_file() -> std::io::Result<File>{
   get_file(DATABASE)
 }
 
-pub fn get_database() -> std::io::Result<HashMap<String, HashMap<u64, Vec<Deck>>>>{
+pub fn get_database() -> std::io::Result<HashMap<String, HashMap<u64, Vec<Deck>>>> {
   let database = database_file()?;
   let reader = BufReader::new(&database);
 
+  if database.metadata()?.len() == 0 {
+    return Ok(HashMap::new());
+  };
   match serde_json::from_reader(reader){
     Ok(db) => Ok(db),
-    Err(_) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Can not read file as JSON"))
+    Err(_) => {
+
+      Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Can not read file as JSON"))
+    }
   }
 }
 
