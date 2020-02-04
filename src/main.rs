@@ -23,12 +23,20 @@ fn check_for_auth() -> Option<Auth>{
   let token: String = match env::var("TRELLO_API_TOKEN"){
     Ok(value) => value,
     Err(_) => {
-      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}
-\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
       return None
     }
   };
 
+
+  if key.is_empty(){
+    eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+    return None
+  }
+  if token.is_empty(){
+    eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+    return None;
+  }
   Some(Auth{
     key,
     token
@@ -41,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // TODO: Pull this out to yaml at some point
   let matches = App::new("Card Counter")
-    .version("0.3.0-beta-3")
+    .version("0.3.0")
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
     .arg(Arg::with_name("board_id")
