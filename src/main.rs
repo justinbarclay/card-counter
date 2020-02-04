@@ -8,8 +8,8 @@ mod score;
 mod database;
 
 use trello::Auth;
-use score::{get_board_id, get_lists, build_decks, print_decks};
-use database::file::update_local_database;
+use score::{get_board_id, get_lists, build_decks, print_decks, print_delta};
+use database::file::{save_local_database, get_decks_by_date};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   // TODO: Pull this out to yaml at some point
   let matches = App::new("Card Counter")
-    .version("0.1.0")
+    .version("0.3.0-beta-3")
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
     .arg(Arg::with_name("board_id")
@@ -63,6 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          .help("Save the current request in the database. Defaults to true.")
          .default_value("true")
          .takes_value(true))
+    .arg(Arg::with_name("detailed")
+         .short("d")
+         .long("detailed")
+         .help("Prints detailed stats for your trello lists, including the change in cards and scores from a previous run."))
     .get_matches();
 
   match  check_for_auth(){
@@ -76,10 +80,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
-      print_decks(&decks);
+      if matches.is_present("detailed") {
+        if let Some(old_decks) = get_decks_by_date(&board_id){
+          print_delta(&decks, &old_decks);
+        } else{
+          println!("Unable to retrieve an old deck from the database.");
+          print_decks(&decks);
+        }
+      } else {
+        print_decks(&decks);
+      }
 
       match matches.value_of("save"){
-        Some("true") => update_local_database(&board_id, &decks)?,
+        Some("true") => save_local_database(&board_id, &decks),
         _ => ()
       }
       Ok(())
