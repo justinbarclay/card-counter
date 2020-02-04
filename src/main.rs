@@ -69,13 +69,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
          .help("Prints detailed stats for your trello lists, including the change in cards and scores from a previous run."))
     .get_matches();
 
-  match  check_for_auth(){
+  match check_for_auth(){
     Some(auth) => {
       // Parse arguments, if board_id isn't found
       let filter: Option<&str> = matches.value_of("filter");
       let board_id = match matches.value_of("board_id"){
         Some(id) => id.to_string(),
-        None => get_board_id(auth.clone()).await?
+        None => {
+          match get_board_id(auth.clone()).await{
+            Ok(board_id) => board_id,
+            // TODO: Create own error type to centralize and make handling of errors easier.
+            // Right now I don't know how to get the type of this errors
+            Err(err) => {
+              eprintln!("{}", err);
+              std::process::exit(1);
+              // return Err(err);
+            }
+          }
+        }
       };
 
       let cards = get_lists(auth.clone(), &board_id, filter).await?;

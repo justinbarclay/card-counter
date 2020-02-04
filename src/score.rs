@@ -35,12 +35,15 @@ pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Erro
   let client = reqwest::Client::new();
 
   // Getting all the boards
-  let result: Vec<Board> = client.get(&format!("https://api.trello.com/1/members/me/boards?key={}&token={}", auth.key, auth.token))
+  let response = client.get(&format!("https://api.trello.com/1/members/me/boards?key={}&token={}", auth.key, auth.token))
     .send()
-    .await?
-    .json()
     .await?;
 
+  // TODO: Handle this better
+  // maybe create a custom error types for status codes?
+  response.error_for_status_ref()?;
+
+  let result: Vec<Board> = response.json().await?;
 
   // Storing it as a hash-map, so we can easily retrieve and return the id
   let boards: HashMap<String, String> = result.iter().fold(HashMap::new(), |mut collection, board| {
@@ -66,11 +69,13 @@ pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Erro
 /// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
 pub async fn get_lists(auth: Auth, board_id: &str, filter: Option<&str>) -> Result< Vec<List>, Box<dyn std::error::Error>>{
   let client = reqwest::Client::new();
-  let lists: Vec<List> = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, auth.key, auth.token))
+  let response = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, auth.key, auth.token))
     .send()
-    .await?
-    .json()
     .await?;
+
+  response.error_for_status_ref()?;
+
+  let lists: Vec<List> = response.json().await?;
 
   Ok(lists.iter().fold(Vec::new(), |mut container, list| {
     match filter {
@@ -92,12 +97,14 @@ pub async fn build_decks(auth: Auth, lists: Vec<List>) ->  Result< Vec<Deck>, Bo
   let client = reqwest::Client::new();
   let mut decks = Vec::new();
   for list in lists {
-    let cards: Vec<Card> = client
+    let response = client
       .get(&format!("https://api.trello.com/1/lists/{}/cards?card_fields=name&key={}&token={}", list.id, auth.key, auth.token))
       .send()
-      .await?
-      .json()
       .await?;
+
+    response.error_for_status_ref()?;
+
+    let cards: Vec<Card> = response.json().await?;
 
     let (score, unscored, estimated) = cards.iter().fold((0,0,0), |(total, unscored, estimate), card|{
       match get_score(&card.name){
