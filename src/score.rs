@@ -184,21 +184,38 @@ pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>
 
 pub fn print_decks(decks: &[Deck]){
   let mut table = Table::new();
+  table.set_format(*prettytable::format::consts::FORMAT_BORDERS_ONLY);
+  let mut total = Deck {
+    name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
+  };
 
-  table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
-
+  table.set_titles(row!["List", "cards", "score","estimated", "unscored"]);
   for deck in decks {
     table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
+    total = add_deck(&total, &deck);
   }
-
+  table.add_row(row![total.name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
 }
 
+fn add_deck(total: &Deck, deck: &Deck) -> Deck{
+  Deck{
+    name: total.name.clone(),
+    size: total.size + deck.size,
+    score: total.score + deck.score,
+    estimated: total.estimated + deck.estimated,
+    unscored: total.unscored + deck.unscored,
+  }
+}
 /// Prints a that compares two decks to standard out
 pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck]){
   let mut table = Table::new();
+  table.set_format(*prettytable::format::consts::FORMAT_BORDERS_ONLY);
 
-  table.add_row(row!["List", "cards", "score","estimated", "unscored"]);
+  table.set_titles(row!["List", "Cards", "Score","Estimated", "Unscored"]);
+  let mut total = Deck {
+    name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
+  };
 
   for deck in current_decks {
     let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
@@ -225,8 +242,9 @@ pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck]){
         table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
       }
     }
+    total = add_deck(&total, &deck);
   }
-
+  table.add_row(row![total.name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
   println!("* Printing in detailed mode. Numbers in () mark the difference from the last time card-counter was run and saved data.");
 }
