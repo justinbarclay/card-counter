@@ -8,7 +8,7 @@ mod score;
 mod database;
 
 use trello::Auth;
-use score::{get_board_id, get_lists, build_decks, print_decks, print_delta};
+use score::{get_board, select_board, get_lists, build_decks, print_decks, print_delta};
 use database::file::{save_local_database, get_decks_by_date};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
@@ -81,11 +81,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Some(auth) => {
       // Parse arguments, if board_id isn't found
       let filter: Option<&str> = matches.value_of("filter");
-      let board_id = match matches.value_of("board_id"){
-        Some(id) => id.to_string(),
+      let result = match matches.value_of("board_id"){
+        Some(id) =>{
+          get_board(id, auth.clone()).await
+        },
         None => {
-          match get_board_id(auth.clone()).await{
-            Ok(board_id) => board_id,
+          select_board(auth.clone()).await
+        }
+      };
+
+      let board = match result {
+            Ok(board) => board,
             // TODO: Create own error type to centralize and make handling of errors easier.
             // Right now I don't know how to get the type of this errors
             Err(err) => {
@@ -93,25 +99,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
               std::process::exit(1);
               // return Err(err);
             }
-          }
-        }
-      };
+          };
 
-      let cards = get_lists(auth.clone(), &board_id, filter).await?;
+      let cards = get_lists(auth.clone(), &board.id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
       if matches.is_present("detailed") {
-        if let Some(old_decks) = get_decks_by_date(&board_id){
-          print_delta(&decks, &old_decks);
+        if let Some(old_decks) = get_decks_by_date(&board.id){
+          print_delta(&decks, &old_decks, &board.name);
         } else{
           println!("Unable to retrieve an old deck from the database.");
-          print_decks(&decks);
+          print_decks(&decks, &board.name);
         }
       } else {
-        print_decks(&decks);
+        print_decks(&decks, &board.name);
       }
 
       match matches.value_of("save"){
-        Some("true") => save_local_database(&board_id, &decks),
+        Some("true") => save_local_database(&board.id, &decks),
         _ => ()
       }
       Ok(())

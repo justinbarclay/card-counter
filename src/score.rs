@@ -29,9 +29,23 @@ pub struct Score{
   estimated: Option<i32>,
   correction: Option<i32>
 }
+/// Retrieves the name of the board given the id
+pub async fn get_board(board_id: &str, auth: Auth) -> Result<Board, Box<dyn std::error::Error>> {
+  let client = reqwest::Client::new();
+
+  // Getting all the boards
+  let response = client.get(&format!("https://api.trello.com/1/boards/{}?key={}&token={}", board_id, auth.key, auth.token))
+    .send()
+    .await?;
+
+  response.error_for_status_ref()?;
+
+  let board: Board = response.json().await?;
+  Ok(board)
+}
 
 /// Allows the user to select a board from a list
-pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn select_board(auth: Auth) -> Result<Board, Box<dyn std::error::Error>> {
   let client = reqwest::Client::new();
 
   // Getting all the boards
@@ -46,8 +60,8 @@ pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Erro
   let result: Vec<Board> = response.json().await?;
 
   // Storing it as a hash-map, so we can easily retrieve and return the id
-  let boards: HashMap<String, String> = result.iter().fold(HashMap::new(), |mut collection, board| {
-    collection.insert(board.name.clone(), board.id.clone());
+  let boards: HashMap<String, Board> = result.iter().fold(HashMap::new(), |mut collection, board| {
+    collection.insert(board.name.clone(), board.clone());
     collection
   });
 
@@ -62,8 +76,7 @@ pub async fn get_board_id(auth: Auth) -> Result<String, Box<dyn std::error::Erro
 
   Ok(boards
      .get(&board_names[name_index])
-     .unwrap()
-     .to_string())
+     .unwrap().to_owned())
 }
 
 /// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
@@ -182,19 +195,20 @@ pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>
   collection
 }
 
-pub fn print_decks(decks: &[Deck]){
+pub fn print_decks(decks: &[Deck], board_name: &str){
   let mut table = Table::new();
-  table.set_format(*prettytable::format::consts::FORMAT_BORDERS_ONLY);
+
   let mut total = Deck {
     name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
 
+  println!("{}", board_name);
   table.set_titles(row!["List", "cards", "score","estimated", "unscored"]);
   for deck in decks {
     table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
     total = add_deck(&total, &deck);
   }
-  table.add_row(row![total.name, total.size, total.score, total.estimated, total.unscored]);
+  table.add_row(row![bc => total.name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
 }
 
@@ -208,15 +222,14 @@ fn add_deck(total: &Deck, deck: &Deck) -> Deck{
   }
 }
 /// Prints a that compares two decks to standard out
-pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck]){
+pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck], board_name: &str){
   let mut table = Table::new();
-  table.set_format(*prettytable::format::consts::FORMAT_BORDERS_ONLY);
 
   table.set_titles(row!["List", "Cards", "Score","Estimated", "Unscored"]);
   let mut total = Deck {
     name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
-
+  println!("{}", board_name);
   for deck in current_decks {
     let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
                                          if maybe_deck.name == deck.name{
@@ -244,7 +257,7 @@ pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck]){
     }
     total = add_deck(&total, &deck);
   }
-  table.add_row(row![total.name, total.size, total.score, total.estimated, total.unscored]);
+  table.add_row(row![bc => total.name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
   println!("* Printing in detailed mode. Numbers in () mark the difference from the last time card-counter was run and saved data.");
 }
