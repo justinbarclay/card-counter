@@ -55,7 +55,7 @@ async fn run() -> Result<()> {
 
   // TODO: Pull this out to yaml at some point
   let matches = App::new("Card Counter")
-    .version("0.3.0")
+    .version(env!("CARGO_PKG_VERSION"))
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
     .arg(Arg::with_name("board_id")
