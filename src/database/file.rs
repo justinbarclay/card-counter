@@ -10,7 +10,7 @@ use std::time::SystemTime;
 use dirs::home_dir;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
-
+use crate::errors::*;
 use crate::score::Deck;
 static CONFIG: &'static str = "card-counter.config";
 static DATABASE: &'static str = "database.json";
@@ -41,24 +41,24 @@ fn create_main_dir() -> PathBuf{
   }
 }
 /// Create or Opens a file handle for `name`
-fn get_file(name: &str) -> std::io::Result<File>{
+fn get_file(name: &str) -> Result<File>{
   let mut path = create_main_dir();
   path.push(name);
 
-  OpenOptions::new()
+  Ok(OpenOptions::new()
     .write(true)
     .read(true)
     .create(true)
-    .open(path)
+    .open(path)?)
 }
 
 /// Opens and returns file handle for the config file. If no file is found it creates a one.
-fn config_file() -> std::io::Result<File>{
+fn config_file() -> Result<File>{
   get_file(CONFIG)
 }
 
 /// Opens and returns the file handle for the history file. If no file is found it creates a new one.
-fn database_file() -> std::io::Result<File>{
+fn database_file() -> Result<File>{
   get_file(DATABASE)
 }
 
@@ -88,16 +88,17 @@ pub fn get_database() -> Database {
 
 /// Attempts to save the database and panics if it can't parse the db into JSON or if it can't write to
 /// the database file.
-pub fn save_database(db: Database){
+pub fn save_database(db: Database) -> Result<()>{
   // No Sane default: We want to error if we can't open or access the File handle
-  let mut writer = BufWriter::new(database_file().expect("Unable to open database"));
+  let mut writer = BufWriter::new(database_file().chain_err(|| "Unable to open database")?);
 
   // There is no safe default behavior we can perform here.
-  let json = serde_json::to_string(&db).expect("Unable to parse data.");
+  let json = serde_json::to_string(&db).chain_err(|| "Unable to parse database")?;
 
   // No Sane default: IO Errors if we can't move around the file
-  writer.seek(SeekFrom::Start(0)).expect("Unable to write to file $HOME/.card-counter/database.json");
-  writer.write_all(json.as_bytes()).expect("Unable to write to file $HOME/.card-counter/database.json");
+  writer.seek(SeekFrom::Start(0)).chain_err(|| "Unable to write to file $HOME/.card-counter/database.json")?;
+  writer.write_all(json.as_bytes()).chain_err(|| "Unable to write to file $HOME/.card-counter/database.json")?;
+  Ok(())
 }
 
 /// Updates or creates a local database and inserts the current set of decks as an entry
@@ -117,9 +118,9 @@ pub fn save_database(db: Database){
 ///   }
 /// }
 /// ```
-// I don't like the signature of this file, an update feels like it should return something...
-pub fn save_local_database(board_id: &str, decks: &[Deck]) {
-  // No Sane default: if we can't get the database we need to error out to the use
+
+pub fn save_local_database(board_id: &str, decks: &[Deck]) -> Result<()>{
+  // No Sane default: if we can't get the database we need to error out to the user
   let mut db = get_database();
 
   // Generate a new entry and update the database
@@ -129,12 +130,13 @@ pub fn save_local_database(board_id: &str, decks: &[Deck]) {
   // We can quickly convert to string so users can picks what one they want and we can easily
   // sort these keys by number and determine when the data was entered, without having to write
   // our own compare functions.
-  let unix_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Unable to convert to Unix time");
+  let unix_time = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).chain_err(|| "Unable to get UNIX time.")?;
 
   add_entry(&mut db, board_id, unix_time.as_secs(), decks);
 
   // No Sane default: if we can't get the database we need to error out to the use
-  save_database(db);
+  save_database(db)?;
+  Ok(())
 }
 
 /// Adds an entry into the database using the board_id and timestamp as keys.

@@ -1,12 +1,19 @@
+// `error_chain!` can recurse deeply
+#![recursion_limit = "1024"]
+
 use std::env;
 use clap::{Arg, App};
 
 #[macro_use] extern crate prettytable;
 
+#[macro_use] extern crate error_chain;
+
 mod trello;
 mod score;
 mod database;
+mod errors;
 
+use errors::Result;
 use trello::Auth;
 use score::{get_board, select_board, get_lists, build_decks, print_decks, print_delta};
 use database::file::{save_local_database, get_decks_by_date};
@@ -44,8 +51,7 @@ fn check_for_auth() -> Option<Auth>{
 }
 
 // Run all of network code asynchronously using tokio and await
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn run() -> Result<()> {
 
   // TODO: Pull this out to yaml at some point
   let matches = App::new("Card Counter")
@@ -81,25 +87,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Some(auth) => {
       // Parse arguments, if board_id isn't found
       let filter: Option<&str> = matches.value_of("filter");
-      let result = match matches.value_of("board_id"){
+      let board = match matches.value_of("board_id"){
         Some(id) =>{
-          get_board(id, auth.clone()).await
+          get_board(id, auth.clone()).await?
         },
         None => {
-          select_board(auth.clone()).await
+          select_board(auth.clone()).await?
         }
       };
-
-      let board = match result {
-            Ok(board) => board,
-            // TODO: Create own error type to centralize and make handling of errors easier.
-            // Right now I don't know how to get the type of this errors
-            Err(err) => {
-              eprintln!("{}", err);
-              std::process::exit(1);
-              // return Err(err);
-            }
-          };
 
       let cards = get_lists(auth.clone(), &board.id, filter).await?;
       let decks = build_decks(auth.clone(), cards).await?;
@@ -107,7 +102,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(old_decks) = get_decks_by_date(&board.id){
           print_delta(&decks, &old_decks, &board.name);
         } else{
-          println!("Unable to retrieve an old deck from the database.");
+          println!("Unable to retrieve an deck from the database.");
           print_decks(&decks, &board.name);
         }
       } else {
@@ -115,11 +110,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       }
 
       match matches.value_of("save"){
-        Some("true") => save_local_database(&board.id, &decks),
+        Some("true") => save_local_database(&board.id, &decks)?,
         _ => ()
       }
       Ok(())
     },
     None => std::process::exit(1)
+  }
+}
+
+// The above main gives you maximum control over how the error is
+// formatted. If you don't care (i.e. you want to display the full
+// error during an assert) you can just call the `display_chain` method
+// on the error object
+#[allow(dead_code)]
+#[tokio::main]
+async fn main() {
+  if let Err(ref e) = run().await {
+    use std::io::Write;
+    let stderr = &mut ::std::io::stderr();
+    let errmsg = "Error writing to stderr";
+
+    writeln!(stderr, "error: {}", e).expect(errmsg);
+
+    for e in e.iter().skip(1) {
+      writeln!(stderr, "caused by: {}", e).expect(errmsg);
+    }
+
+    // The backtrace is not always generated. Try to run this example
+    // with `RUST_BACKTRACE=1`.
+    if let Some(backtrace) = e.backtrace() {
+      writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
+    }
+
+    ::std::process::exit(1);
   }
 }

@@ -1,12 +1,13 @@
 // File for retrieving cards from trello and scoring them
 use std::collections::HashMap;
-
 use dialoguer::Select;
 use prettytable::Table;
 use regex::Regex;
 use regex::Captures;
 use serde::{Serialize, Deserialize};
 use crate::trello::{Board, Card, Auth, List};
+use crate::errors::*;
+
 /// A deck represents some summary data about a list of Trello cards
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Deck{
@@ -29,8 +30,9 @@ pub struct Score{
   estimated: Option<i32>,
   correction: Option<i32>
 }
+
 /// Retrieves the name of the board given the id
-pub async fn get_board(board_id: &str, auth: Auth) -> Result<Board, Box<dyn std::error::Error>> {
+pub async fn get_board(board_id: &str, auth: Auth) -> Result<Board> {
   let client = reqwest::Client::new();
 
   // Getting all the boards
@@ -38,14 +40,20 @@ pub async fn get_board(board_id: &str, auth: Auth) -> Result<Board, Box<dyn std:
     .send()
     .await?;
 
-  response.error_for_status_ref()?;
+  if let Err(err) = response.error_for_status_ref(){
+    match err.status(){
+      Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth).into()),
+      // Convert private reqwest::error::Error into a trello_error
+      _ => return Err(err.to_string().into())
+    }
+  };
 
   let board: Board = response.json().await?;
   Ok(board)
 }
 
 /// Allows the user to select a board from a list
-pub async fn select_board(auth: Auth) -> Result<Board, Box<dyn std::error::Error>> {
+pub async fn select_board(auth: Auth) -> Result<Board> {
   let client = reqwest::Client::new();
 
   // Getting all the boards
@@ -55,7 +63,6 @@ pub async fn select_board(auth: Auth) -> Result<Board, Box<dyn std::error::Error
 
   // TODO: Handle this better
   // maybe create a custom error types for status codes?
-  response.error_for_status_ref()?;
 
   let result: Vec<Board> = response.json().await?;
 
@@ -72,7 +79,8 @@ pub async fn select_board(auth: Auth) -> Result<Board, Box<dyn std::error::Error
     .with_prompt("Select a board: ")
     .items(&board_names)
     .default(0)
-    .interact()?;
+    .interact()
+    .chain_err(|| "There was an error while trying to select a board.")?;
 
   Ok(boards
      .get(&board_names[name_index])
@@ -80,13 +88,19 @@ pub async fn select_board(auth: Auth) -> Result<Board, Box<dyn std::error::Error
 }
 
 /// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
-pub async fn get_lists(auth: Auth, board_id: &str, filter: Option<&str>) -> Result< Vec<List>, Box<dyn std::error::Error>>{
+pub async fn get_lists(auth: Auth, board_id: &str, filter: Option<&str>) -> Result<Vec<List>>{
   let client = reqwest::Client::new();
   let response = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, auth.key, auth.token))
     .send()
     .await?;
 
-  response.error_for_status_ref()?;
+  if let Err(err) = response.error_for_status_ref(){
+    match err.status(){
+      Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth).into()),
+      // Convert private reqwest::error::Error into a trello_error
+      _ => return Err(err.to_string().into())
+    }
+  };
 
   let lists: Vec<List> = response.json().await?;
 
@@ -106,7 +120,7 @@ pub async fn get_lists(auth: Auth, board_id: &str, filter: Option<&str>) -> Resu
 
 
 /// Iterates over all the cards in each lists and builds up the stats for a deck of cards
-pub async fn build_decks(auth: Auth, lists: Vec<List>) ->  Result< Vec<Deck>, Box<dyn std::error::Error>>{
+pub async fn build_decks(auth: Auth, lists: Vec<List>) ->  Result<Vec<Deck>>{
   let client = reqwest::Client::new();
   let mut decks = Vec::new();
   for list in lists {
@@ -115,9 +129,15 @@ pub async fn build_decks(auth: Auth, lists: Vec<List>) ->  Result< Vec<Deck>, Bo
       .send()
       .await?;
 
-    response.error_for_status_ref()?;
+    if let Err(err) = response.error_for_status_ref(){
+      match err.status(){
+        Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth).into()),
+        // Convert private reqwest::error::Error into a trello_error
+        _ => return Err(err.to_string().into())
+      }
+    };
 
-    let cards: Vec<Card> = response.json().await?;
+    let cards: Vec<Card> = response.json().await.chain_err(|| "There was a problem parsing JSON.")?;
 
     let (score, unscored, estimated) = cards.iter().fold((0,0,0), |(total, unscored, estimate), card|{
       match get_score(&card.name){
