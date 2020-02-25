@@ -53,7 +53,7 @@ fn get_file(name: &str) -> Result<File>{
 }
 
 /// Opens and returns file handle for the config file. If no file is found it creates a one.
-fn config_file() -> Result<File>{
+pub fn config_file() -> Result<File>{
   get_file(CONFIG)
 }
 
