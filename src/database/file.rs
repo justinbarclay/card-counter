@@ -12,7 +12,7 @@ use chrono::NaiveDateTime;
 use dialoguer::Select;
 use crate::errors::*;
 use crate::score::Deck;
-static CONFIG: &'static str = "card-counter.config";
+static CONFIG: &'static str = "card-counter.yaml";
 static DATABASE: &'static str = "database.json";
 
 // This code has a lot of panics in it, I've chosen to do this because where there are panics it's in the case of IO or data errors.

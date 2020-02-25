@@ -16,7 +16,8 @@ mod errors;
 use errors::Result;
 use trello::{Auth, get_lists, get_board};
 use score::{select_board, build_decks, print_decks, print_delta};
-use database::file::{save_local_database, get_decks_by_date};
+use database::{file::{save_local_database, get_decks_by_date},
+               config::update_config};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Option<Auth>{
@@ -81,8 +82,14 @@ async fn run() -> Result<()> {
          .short("d")
          .long("detailed")
          .help("Prints detailed stats for your trello lists, including the change in cards and scores from a previous run."))
+    .subcommand(clap::SubCommand::with_name("config")
+                .about("Edit properties associated with card-counter"))
     .get_matches();
 
+  if matches.subcommand_matches("config").is_some(){
+    update_config()?;
+    return std::process::exit(0)
+  }
   match check_for_auth(){
     Some(auth) => {
       // Parse arguments, if board_id isn't found

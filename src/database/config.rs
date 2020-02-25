@@ -10,11 +10,6 @@ trait Default {
   fn defaults() -> Self;
 }
 
-// let old_config = get_config();
-// let new_config = user_update_prompts(&old_config).unwrap();
-// save_config(&new_config).unwrap();
-
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
   trello_key: String,
@@ -81,5 +76,12 @@ pub fn save_config(config: &Config) -> Result<()>{
 
   writer.seek(SeekFrom::Start(0)).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
   writer.write_all(json.as_bytes()).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
+  Ok(())
+}
+
+pub fn update_config() -> Result<()>{
+  let config = get_config();
+  let new_config = user_update_prompts(&config)?;
+  save_config(&new_config).unwrap();
   Ok(())
 }
