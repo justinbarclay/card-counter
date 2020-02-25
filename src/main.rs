@@ -14,8 +14,8 @@ mod database;
 mod errors;
 
 use errors::Result;
-use trello::Auth;
-use score::{get_board, select_board, get_lists, build_decks, print_decks, print_delta};
+use trello::{Auth, get_lists, get_board};
+use score::{select_board, build_decks, print_decks, print_delta};
 use database::file::{save_local_database, get_decks_by_date};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
@@ -89,15 +89,15 @@ async fn run() -> Result<()> {
       let filter: Option<&str> = matches.value_of("filter");
       let board = match matches.value_of("board_id"){
         Some(id) =>{
-          get_board(id, auth.clone()).await?
+          get_board(id, &auth).await?
         },
         None => {
-          select_board(auth.clone()).await?
+          select_board(&auth).await?
         }
       };
 
-      let cards = get_lists(auth.clone(), &board.id, filter).await?;
-      let decks = build_decks(auth.clone(), cards).await?;
+      let cards = get_lists(&auth, &board.id, filter).await?;
+      let decks = build_decks(&auth, cards).await?;
       if matches.is_present("detailed") {
         if let Some(old_decks) = get_decks_by_date(&board.id){
           print_delta(&decks, &old_decks, &board.name);

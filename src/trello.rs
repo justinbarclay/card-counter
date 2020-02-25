@@ -1,5 +1,7 @@
 /// Structures for serializing and de-serializing responses from Trello
 use serde::{Serialize, Deserialize};
+
+use crate::errors::*;
 // Unofficial struct to hold the key and token for working with the trello api
 #[derive(Clone, Debug)]
 pub struct Auth{
@@ -48,4 +50,85 @@ pub struct List {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Card{
   pub name: String
+}
+// Adds formatting to error message if getting a 401 from the api
+pub fn no_authentication(auth: &Auth, response: &reqwest::Response) -> Result<()>{
+  if let Err(err) = response.error_for_status_ref(){
+    match err.status(){
+      Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth.clone()).into()),
+      // Convert private reqwest::error::Error into a trello_error
+      _ => return Err(err.to_string().into())
+    }
+  };
+  Ok(())
+}
+
+/// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
+pub async fn get_lists(auth: &Auth, board_id: &str, filter: Option<&str>) -> Result<Vec<List>>{
+  let client = reqwest::Client::new();
+  let response = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, auth.key, auth.token))
+    .send()
+    .await?;
+
+  no_authentication(auth, &response)?;
+
+  let lists: Vec<List> = response.json().await?;
+
+  Ok(lists.iter().fold(Vec::new(), |mut container, list| {
+    match filter {
+      Some(value) => {
+        if !list.name.contains(value) {
+          container.push(list.clone());
+        }
+      },
+      None => container.push(list.clone())
+    };
+
+    container
+  }))
+}
+
+/// Retrieves the name of the board given the id
+pub async fn get_board(board_id: &str, auth: &Auth) -> Result<Board> {
+  let client = reqwest::Client::new();
+
+  // Getting all the boards
+  let response = client.get(&format!("https://api.trello.com/1/boards/{}?key={}&token={}", board_id, auth.key, auth.token))
+    .send()
+    .await?;
+
+  no_authentication(auth, &response)?;
+
+  if let Err(err) = response.error_for_status_ref(){
+    match err.status(){
+      Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth.clone()).into()),
+      // Convert private reqwest::error::Error into a trello_error
+      _ => return Err(err.to_string().into())
+    }
+  };
+
+  let board: Board = response.json().await?;
+  Ok(board)
+}
+
+pub async fn get_cards(auth: &Auth, list_id: &str) -> Result<Vec<Card>>{
+  let client = reqwest::Client::new();
+  let response = client
+    .get(&format!("https://api.trello.com/1/lists/{}/cards?card_fields=name&key={}&token={}", list_id, auth.key, auth.token))
+    .send()
+    .await?;
+
+  no_authentication(auth, &response)?;
+
+  if let Err(err) = response.error_for_status_ref(){
+    match err.status(){
+      Some(reqwest::StatusCode::UNAUTHORIZED)=> return Err(ErrorKind::InvalidAuthInformation(auth.clone()).into()),
+      // Convert private reqwest::error::Error into a trello_error
+      _ => return Err(err.to_string().into())
+    }
+  };
+
+  let cards: Vec<Card> = response.json().await.chain_err(|| "There was a problem parsing JSON.")?;
+
+  Ok(cards)
 }
