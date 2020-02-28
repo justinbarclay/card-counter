@@ -2,6 +2,8 @@
 #![recursion_limit = "1024"]
 
 use std::env;
+use std::io::Write;
+
 use clap::{Arg, App};
 
 #[macro_use] extern crate prettytable;
@@ -62,6 +64,38 @@ fn auth_from_env() -> Option<Auth>{
   })
 }
 
+async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<()>{
+  let filter: Option<&str> = matches.value_of("filter");
+  // Parse arguments, if board_id isn't found
+  let board = match matches.value_of("board_id"){
+    Some(id) =>{
+      get_board(id, auth).await?
+    },
+    None => {
+      select_board(auth).await?
+    }
+  };
+
+  let cards = get_lists(auth, &board.id, filter).await?;
+  let decks = build_decks(auth, cards).await?;
+  if matches.is_present("detailed") {
+    if let Some(old_decks) = get_decks_by_date(&board.id){
+      print_delta(&decks, &old_decks, &board.name);
+    } else{
+      println!("Unable to retrieve an deck from the database.");
+      print_decks(&decks, &board.name);
+    }
+  } else {
+    print_decks(&decks, &board.name);
+  }
+
+  match matches.value_of("save"){
+    Some("true") => save_local_database(&board.id, &decks)?,
+    _ => ()
+  };
+
+  Ok(())
+}
 // Run all of network code asynchronously using tokio and await
 async fn run() -> Result<()> {
 
@@ -104,40 +138,12 @@ async fn run() -> Result<()> {
 
   // If we error for from trying to read the auth file then toss it up the stack otherwise deconstruct
   // Optional
-  match check_for_auth()?{
-    Some(auth) => {
-      // Parse arguments, if board_id isn't found
-      let filter: Option<&str> = matches.value_of("filter");
-      let board = match matches.value_of("board_id"){
-        Some(id) =>{
-          get_board(id, &auth).await?
-        },
-        None => {
-          select_board(&auth).await?
-        }
-      };
-
-      let cards = get_lists(&auth, &board.id, filter).await?;
-      let decks = build_decks(&auth, cards).await?;
-      if matches.is_present("detailed") {
-        if let Some(old_decks) = get_decks_by_date(&board.id){
-          print_delta(&decks, &old_decks, &board.name);
-        } else{
-          println!("Unable to retrieve an deck from the database.");
-          print_decks(&decks, &board.name);
-        }
-      } else {
-        print_decks(&decks, &board.name);
-      }
-
-      match matches.value_of("save"){
-        Some("true") => save_local_database(&board.id, &decks)?,
-        _ => ()
-      }
-      Ok(())
-    },
+  let auth = match check_for_auth()?{
+    Some(auth) => auth,
     None => std::process::exit(1)
-  }
+  };
+
+  show_score(&auth, &matches).await
 }
 
 // The above main gives you maximum control over how the error is
@@ -148,7 +154,6 @@ async fn run() -> Result<()> {
 #[tokio::main]
 async fn main() {
   if let Err(ref e) = run().await {
-    use std::io::Write;
     let stderr = &mut ::std::io::stderr();
     let errmsg = "Error writing to stderr";
 

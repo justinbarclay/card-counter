@@ -5,7 +5,7 @@ use prettytable::Table;
 use regex::Regex;
 use regex::Captures;
 use serde::{Serialize, Deserialize};
-use crate::trello::{Board, Card, Auth, List, get_board, get_lists, get_cards};
+use crate::trello::{Board, Auth, List, get_cards};
 use crate::errors::*;
 
 /// A deck represents some summary data about a list of Trello cards

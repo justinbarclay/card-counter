@@ -158,6 +158,7 @@ fn add_entry(db: &mut Database, board_id: &str, timestamp: u64, decks: &[Deck]){
 
 /// Attempts to get an entry from the database if an entry for a board is found
 /// it returns a Vector of the decks.
+#[allow(dead_code)]
 pub fn get_latest_entry(db: Database, board_id: &str) -> Option<Vec<Deck>> {
   // Return none to reprompt user for another board_id
   let board = db.get(board_id)?;
