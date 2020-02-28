@@ -4,6 +4,7 @@ use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
 use dialoguer::Input;
 use serde::{Serialize, Deserialize};
+use crate::trello::Auth;
 use crate::errors::*;
 
 trait Default {
@@ -27,25 +28,24 @@ impl Default for Config {
   }
 }
 
-pub fn get_config() -> Config {
-  let config = config_file().expect("Unable to find config file at $HOME/.card-counter");
+// This is a little bit messy, we
+pub fn get_config() -> Result<Option<Config>> {
+  let config = match config_file(){
+    Ok(file) => file,
+    Err(_) => return Ok(None)
+  };
+
   let reader = BufReader::new(&config);
 
   // We need to know the length of the file or we could erroneously toss a JSON error.
   // We should error out if we can't read metadata.
   if config.metadata().expect("Unable to read metadata for $HOME/.card-counter/config.yaml").len() == 0 {
-    return Config::defaults()
+    return Ok(None)
   };
 
   // No Sane default: If we can't parse as json, it might be recoverable and we don't
   // want to overwrite user data
-  match serde_yaml::from_reader(reader){
-    Ok(db) => db,
-    Err(err) => {
-      eprintln!("Unable to parse file as YAML");
-      panic!("{}", err);
-    }
-  }
+  serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
 }
 
 pub fn user_update_prompts(config: &Config) -> Result<Config>{
@@ -80,8 +80,25 @@ pub fn save_config(config: &Config) -> Result<()>{
 }
 
 pub fn update_config() -> Result<()>{
-  let config = get_config();
+  let config = match get_config()?{
+    Some(config) => config,
+    None => Config::defaults()
+  };
   let new_config = user_update_prompts(&config)?;
   save_config(&new_config).unwrap();
   Ok(())
+}
+
+//
+pub fn auth_from_config() -> Result<Option<Auth>>{
+  let config = match get_config()?{
+    Some(config) => config,
+    None => return Ok(None)
+  };
+
+  Ok(Some(
+    Auth{
+      key: config.trello_key,
+      token: config.trello_token
+    }))
 }
