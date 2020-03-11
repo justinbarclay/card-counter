@@ -2,7 +2,7 @@ use crate::database::file::{config_file};
 
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
-use dialoguer::Input;
+use dialoguer::{Input, Select};
 use serde::{Serialize, Deserialize};
 use crate::trello::Auth;
 use crate::errors::*;
@@ -27,6 +27,9 @@ impl Default for Config {
     }
   }
 }
+
+// The possible values that trello accepts for token expiration times
+pub static TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
 
 // This is a little bit messy, we
 pub fn get_config() -> Result<Option<Config>> {
@@ -54,9 +57,17 @@ pub fn user_update_prompts(config: &Config) -> Result<Config>{
     .default(config.trello_key.clone())
     .interact()?;
 
-  let token_lifetime = None;
+  let expiration_index: usize = Select::new()
+    .with_prompt("How long until your tokens expires?")
+    .items(TOKEN_EXPIRATION)
+    .default(0)
+    .interact()
+    .chain_err(|| "There was an error while trying to set token duration.")?;
+
+  let expiration_time = TOKEN_EXPIRATION[expiration_index];
+
   println!("To generate a new Trello API Token please visit go to the link below and paste the token into the prompt:
-https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}", trello_key);
+https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&response_type=token&key={}", expiration_time, trello_key);
   let trello_token = Input::<String>::new()
     .with_prompt("Trello API Token")
     .default(config.trello_token.clone())
@@ -65,7 +76,7 @@ https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&resp
   Ok(Config{
     trello_key,
     trello_token,
-    token_lifetime,
+    token_lifetime: Some(expiration_time.to_string()),
   })
 }
 
