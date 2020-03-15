@@ -1,20 +1,35 @@
-use crate::database::file::{config_file};
-
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
+
 use dialoguer::{Input, Select};
 use serde::{Serialize, Deserialize};
+
 use crate::trello::Auth;
 use crate::errors::*;
+use crate::database::file::{config_file};
 
 trait Default {
   fn default() -> Self;
 }
+
+// The possible values that trello accepts for token expiration times
+pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 struct Trello{
   key: String,
   token: String,
   expiration: String
+}
+
+impl Default for Trello {
+  fn default() -> Trello {
+    Trello {
+      token: "".to_string(),
+      key: "".to_string(),
+      expiration: "1day".to_string()
+    }
+  }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -29,39 +44,6 @@ impl Default for Config {
     }
   }
 }
-
-impl Default for Trello {
-  fn default() -> Trello {
-    Trello {
-      token: "".to_string(),
-      key: "".to_string(),
-      expiration: "1day".to_string()
-    }
-  }
-}
-// The possible values that trello accepts for token expiration times
-pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
-
-// This is a little bit messy, we
-pub fn get_config() -> Result<Option<Config>> {
-  let config = match config_file(){
-    Ok(file) => file,
-    Err(_) => return Ok(None)
-  };
-
-  let reader = BufReader::new(&config);
-
-  // We need to know the length of the file or we could erroneously toss a JSON error.
-  // We should error out if we can't read metadata.
-  if config.metadata().expect("Unable to read metadata for $HOME/.card-counter/config.yaml").len() == 0 {
-    return Ok(None)
-  };
-
-  // No Sane default: If we can't parse as json, it might be recoverable and we don't
-  // want to overwrite user data
-  serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
-}
-
 
 fn trello_details(trello: &Trello) -> Result<Trello>{
     let key = Input::<String>::new()
@@ -92,44 +74,61 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
     expiration: expiration
   })
 }
-pub fn user_update_prompts(config: &Config) -> Result<Config>{
-  let trello = trello_details(&config.trello)?;
 
-  Ok(Config{
-    trello
-  })
-}
+impl Config {
+  pub fn from_file() -> Result<Option<Config>> {
+    let config = match config_file(){
+      Ok(file) => file,
+      Err(_) => return Ok(None)
+    };
 
-pub fn save_config(config: &Config) -> Result<()>{
-  let mut writer = BufWriter::new(config_file().chain_err(|| "Unable to open config file")?);
+    let reader = BufReader::new(&config);
 
-  let json = serde_yaml::to_string(&config).chain_err(|| "Unable to parse config")?;
+    // We need to know the length of the file or we could erroneously toss a JSON error.
+    // We should error out if we can't read metadata.
+    if config.metadata().expect("Unable to read metadata for $HOME/.card-counter/config.yaml").len() == 0 {
+      return Ok(None)
+    };
 
-  writer.seek(SeekFrom::Start(0)).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
-  writer.write_all(json.as_bytes()).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
-  Ok(())
-}
+    // No Sane default: If we can't parse as json, it might be recoverable and we don't
+    // want to overwrite user data
+    serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
+  }
 
-pub fn update_config() -> Result<()>{
-  let config = match get_config()?{
-    Some(config) => config,
-    None => Config::default()
-  };
-  let new_config = user_update_prompts(&config)?;
-  save_config(&new_config).unwrap();
-  Ok(())
-}
+  pub fn user_update_prompts(mut self) -> Result<Config>{
+    let trello = trello_details(&self.trello)?;
+    self.trello = trello;
+    Ok(self)
+  }
 
-//
-pub fn auth_from_config() -> Result<Option<Auth>>{
-  let config = match get_config()?{
-    Some(config) => config,
-    None => return Ok(None)
-  };
+  pub fn persist (self) -> Result<()>{
+    let mut writer = BufWriter::new(config_file().chain_err(|| "Unable to open config file")?);
 
-  Ok(Some(
+    let json = serde_yaml::to_string(&self).chain_err(|| "Unable to parse config")?;
+
+    writer.seek(SeekFrom::Start(0)).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
+    writer.write_all(json.as_bytes()).chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
+    Ok(())
+  }
+
+  pub fn update_file(self) -> Result<()>{
+    self.user_update_prompts()?
+      .persist()
+      .unwrap();
+    Ok(())
+  }
+
+  pub fn from_file_or_default() -> Result<Config>{
+    match Config::from_file()? {
+      Some(config) => Ok(config),
+      None => Ok(Config::default())
+    }
+  }
+
+  pub fn trello_auth(self) -> Auth{
     Auth{
-      key: config.trello.key,
-      token: config.trello.token
-    }))
+      key: self.trello.key,
+      token: self.trello.token
+    }
+  }
 }

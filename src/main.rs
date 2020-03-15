@@ -19,16 +19,13 @@ use errors::Result;
 use trello::{Auth, get_lists, get_board};
 use score::{select_board, build_decks, print_decks, print_delta};
 use database::{file::{save_local_database, get_decks_by_date},
-               config::{update_config, auth_from_config}};
+               config::Config};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Result<Option<Auth>>{
-  let auth = auth_from_config()?;
-  if !auth.is_none(){
-    // Can we do this somehow without destructuring?
-    Ok(auth)
-  } else{
-    Ok(auth_from_env())
+  match Config::from_file()? {
+    Some(config) => Ok(Some(config.trello_auth())),
+    None => Ok(auth_from_env())
   }
 }
 
@@ -132,7 +129,7 @@ async fn run() -> Result<()> {
     .get_matches();
 
   if matches.subcommand_matches("config").is_some(){
-    update_config()?;
+    Config::from_file_or_default()?.update_file()?;
     std::process::exit(0)
   }
 
