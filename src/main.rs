@@ -26,7 +26,7 @@ fn check_for_auth() -> Result<Option<Auth>>{
   let auth = auth_from_config()?;
   if !auth.is_none(){
     // Can we do this somehow without destructuring?
-    return Ok(auth)
+    Ok(auth)
   } else{
     Ok(auth_from_env())
   }

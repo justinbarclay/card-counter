@@ -8,28 +8,39 @@ use crate::trello::Auth;
 use crate::errors::*;
 
 trait Default {
-  fn defaults() -> Self;
+  fn default() -> Self;
+}
+#[derive(Clone, Serialize, Deserialize, Debug)]
+struct Trello{
+  key: String,
+  token: String,
+  expiration: String
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  trello_key: String,
-  trello_token: String,
-  token_lifetime: Option<String>
+  trello: Trello
 }
 
 impl Default for Config {
-  fn defaults() -> Config {
+  fn default() -> Config {
     Config {
-      trello_token: "".to_string(),
-      trello_key: "".to_string(),
-      token_lifetime: None
+      trello: Trello::default()
     }
   }
 }
 
+impl Default for Trello {
+  fn default() -> Trello {
+    Trello {
+      token: "".to_string(),
+      key: "".to_string(),
+      expiration: "1day".to_string()
+    }
+  }
+}
 // The possible values that trello accepts for token expiration times
-pub static TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
+pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
 
 // This is a little bit messy, we
 pub fn get_config() -> Result<Option<Config>> {
@@ -51,32 +62,41 @@ pub fn get_config() -> Result<Option<Config>> {
   serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
 }
 
-pub fn user_update_prompts(config: &Config) -> Result<Config>{
-  let trello_key = Input::<String>::new()
+
+fn trello_details(trello: &Trello) -> Result<Trello>{
+    let key = Input::<String>::new()
     .with_prompt("Trello API Key")
-    .default(config.trello_key.clone())
+    .default(trello.key.clone())
     .interact()?;
 
   let expiration_index: usize = Select::new()
     .with_prompt("How long until your tokens expires?")
-    .items(TOKEN_EXPIRATION)
+    .items(TRELLO_TOKEN_EXPIRATION)
     .default(0)
     .interact()
     .chain_err(|| "There was an error while trying to set token duration.")?;
 
-  let expiration_time = TOKEN_EXPIRATION[expiration_index];
+  let expiration = TRELLO_TOKEN_EXPIRATION[expiration_index].to_string();
 
   println!("To generate a new Trello API Token please visit go to the link below and paste the token into the prompt:
-https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&response_type=token&key={}", expiration_time, trello_key);
-  let trello_token = Input::<String>::new()
+https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&response_type=token&key={}", expiration, key);
+
+  let token = Input::<String>::new()
     .with_prompt("Trello API Token")
-    .default(config.trello_token.clone())
+    .default(trello.token.clone())
     .interact()?;
 
+  Ok(Trello {
+    key,
+    token,
+    expiration: expiration
+  })
+}
+pub fn user_update_prompts(config: &Config) -> Result<Config>{
+  let trello = trello_details(&config.trello)?;
+
   Ok(Config{
-    trello_key,
-    trello_token,
-    token_lifetime: Some(expiration_time.to_string()),
+    trello
   })
 }
 
@@ -93,7 +113,7 @@ pub fn save_config(config: &Config) -> Result<()>{
 pub fn update_config() -> Result<()>{
   let config = match get_config()?{
     Some(config) => config,
-    None => Config::defaults()
+    None => Config::default()
   };
   let new_config = user_update_prompts(&config)?;
   save_config(&new_config).unwrap();
@@ -109,7 +129,7 @@ pub fn auth_from_config() -> Result<Option<Auth>>{
 
   Ok(Some(
     Auth{
-      key: config.trello_key,
-      token: config.trello_token
+      key: config.trello.key,
+      token: config.trello.token
     }))
 }
