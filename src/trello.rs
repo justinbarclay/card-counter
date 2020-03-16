@@ -64,7 +64,7 @@ pub fn no_authentication(auth: &Auth, response: &reqwest::Response) -> Result<()
 }
 
 /// Counts the number of cards for all lists, ignoring lists whose name include the string filter, on a given board.
-pub async fn get_lists(auth: &Auth, board_id: &str, filter: Option<&str>) -> Result<Vec<List>>{
+pub async fn get_lists(auth: &Auth, board_id: &str) -> Result<Vec<List>>{
   let client = reqwest::Client::new();
   let response = client.get(&format!("https://api.trello.com/1/boards/{}/lists?key={}&token={}", board_id, auth.key, auth.token))
     .send()
@@ -74,18 +74,7 @@ pub async fn get_lists(auth: &Auth, board_id: &str, filter: Option<&str>) -> Res
 
   let lists: Vec<List> = response.json().await?;
 
-  Ok(lists.iter().fold(Vec::new(), |mut container, list| {
-    match filter {
-      Some(value) => {
-        if !list.name.contains(value) {
-          container.push(list.clone());
-        }
-      },
-      None => container.push(list.clone())
-    };
-
-    container
-  }))
+  Ok(lists)
 }
 
 /// Retrieves the name of the board given the id

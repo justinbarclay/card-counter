@@ -147,16 +147,16 @@ pub fn calculate_delta(old_deck: &Deck, new_deck: &Deck) -> HashMap<String, i32>
   collection
 }
 
-pub fn print_decks(decks: &[Deck], board_name: &str){
+pub fn print_decks(decks: &[Deck], board_name: &str, filter: Option<&str>){
   let mut table = Table::new();
-
+  let current_decks = filter_decks(decks, filter);
   let mut total = Deck {
     name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
 
   println!("{}", board_name);
   table.set_titles(row!["List", "cards", "score","estimated", "unscored"]);
-  for deck in decks {
+  for deck in current_decks {
     table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
     total = add_deck(&total, &deck);
   }
@@ -173,17 +173,36 @@ fn add_deck(total: &Deck, deck: &Deck) -> Deck{
     unscored: total.unscored + deck.unscored,
   }
 }
+
+fn filter_decks(decks: &[Deck], filter: Option<&str> ) -> Vec<Deck>{
+  decks.iter().fold(Vec::new(), |mut container, list| {
+    match filter {
+      Some(value) => {
+        if !list.name.contains(value) {
+          container.push(list.clone());
+        }
+      },
+      None => container.push(list.clone())
+    };
+
+    container
+  })
+}
 /// Prints a that compares two decks to standard out
-pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck], board_name: &str){
+pub fn print_delta(decks: &[Deck], old_decks: &[Deck], board_name: &str, filter: Option<&str>){
   let mut table = Table::new();
 
   table.set_titles(row!["List", "Cards", "Score","Estimated", "Unscored"]);
   let mut total = Deck {
     name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
+
+  let current_decks = filter_decks(decks, filter);
+  let other_decks = filter_decks(old_decks, filter);
+
   println!("{}", board_name);
   for deck in current_decks {
-    let matching_deck: Option<Deck> = old_decks.iter().fold(None, |match_deck, maybe_deck|
+    let matching_deck: Option<Deck> = other_decks.iter().fold(None, |match_deck, maybe_deck|
                                          if maybe_deck.name == deck.name{
                                            Some(maybe_deck.clone())
                                          }else if match_deck.is_some(){
@@ -194,7 +213,7 @@ pub fn print_delta(current_decks: &[Deck], old_decks: &[Deck], board_name: &str)
 
     match matching_deck{
       Some(old_deck) => {
-        let delta = calculate_delta(&old_deck, deck);
+        let delta = calculate_delta(&old_deck, &deck);
         let cards = format!("{} ({})",deck.size, delta.get("cards").unwrap());
         let score = format!("{} ({})",deck.score, delta.get("score").unwrap());
         let estimated = format!("{} ({})",deck.estimated, delta.get("estimated").unwrap());

@@ -73,17 +73,18 @@ async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<()>{
     }
   };
 
-  let cards = get_lists(auth, &board.id, filter).await?;
+  let cards = get_lists(auth, &board.id).await?;
   let decks = build_decks(auth, cards).await?;
+
   if matches.is_present("detailed") {
     if let Some(old_decks) = get_decks_by_date(&board.id){
-      print_delta(&decks, &old_decks, &board.name);
+      print_delta(&decks, &old_decks, &board.name, filter);
     } else{
       println!("Unable to retrieve an deck from the database.");
-      print_decks(&decks, &board.name);
+      print_decks(&decks, &board.name, filter);
     }
   } else {
-    print_decks(&decks, &board.name);
+    print_decks(&decks, &board.name, filter);
   }
 
   match matches.value_of("save"){
