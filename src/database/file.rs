@@ -118,7 +118,6 @@ pub fn save_database(db: Database) -> Result<()>{
 ///   }
 /// }
 /// ```
-
 pub fn save_local_database(board_id: &str, decks: &[Deck]) -> Result<()>{
   // No Sane default: if we can't get the database we need to error out to the user
   let mut db = get_database();

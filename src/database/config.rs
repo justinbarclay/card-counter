@@ -33,14 +33,32 @@ impl Default for Trello {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+struct AWS {
+  secret_access_key: String,
+  access_key_id: String
+}
+
+impl Default for AWS {
+  fn default() -> AWS {
+    AWS {
+      secret_access_key: "".to_string(),
+      access_key_id: "".to_string(),
+    }
+  }
+}
+
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  trello: Trello
+  trello: Trello,
+  aws: Option<AWS>
 }
 
 impl Default for Config {
   fn default() -> Config {
     Config {
-      trello: Trello::default()
+      trello: Trello::default(),
+      aws: Some(AWS::default())
     }
   }
 }
@@ -72,6 +90,23 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
     key,
     token,
     expiration: expiration
+  })
+}
+
+fn aws_details(aws: &AWS) -> Result<AWS>{
+    let access_key_id = Input::<String>::new()
+    .with_prompt("Access Key ID")
+    .default(aws.access_key_id.clone())
+    .interact()?;
+
+  let secret_access_key = Input::<String>::new()
+    .with_prompt("Secret Access Key")
+    .default(aws.secret_access_key.clone())
+    .interact()?;
+
+  Ok( AWS {
+    access_key_id,
+    secret_access_key
   })
 }
 
@@ -129,6 +164,19 @@ impl Config {
     Auth{
       key: self.trello.key,
       token: self.trello.token
+    }
+  }
+
+  pub fn aws_auth(self) -> Auth{
+    match self.aws {
+      Some(aws) => Auth{
+        key: aws.secret_access_key,
+        token: aws.access_key_id
+      },
+      None => Auth {
+        key: "".to_string(),
+        token: "".to_string()
+      }
     }
   }
 }
