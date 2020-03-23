@@ -19,7 +19,8 @@ use errors::Result;
 use trello::{Auth, get_lists, get_board};
 use score::{select_board, build_decks, print_decks, print_delta};
 use database::{file::{save_local_database, get_decks_by_date},
-               config::Config};
+               config::Config,
+               aws};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Result<Option<Auth>>{
@@ -151,22 +152,23 @@ async fn run() -> Result<()> {
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
-  if let Err(ref e) = run().await {
-    let stderr = &mut ::std::io::stderr();
-    let errmsg = "Error writing to stderr";
+  aws::test_dynamo("hello".to_string()).await;
+  // if let Err(ref e) = run().await {
+  //   let stderr = &mut ::std::io::stderr();
+  //   let errmsg = "Error writing to stderr";
 
-    writeln!(stderr, "error: {}", e).expect(errmsg);
+  //   writeln!(stderr, "error: {}", e).expect(errmsg);
 
-    for e in e.iter().skip(1) {
-      writeln!(stderr, "caused by: {}", e).expect(errmsg);
-    }
+  //   for e in e.iter().skip(1) {
+  //     writeln!(stderr, "caused by: {}", e).expect(errmsg);
+  //   }
 
-    // The backtrace is not always generated. Try to run this example
-    // with `RUST_BACKTRACE=1`.
-    if let Some(backtrace) = e.backtrace() {
-      writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
-    }
+  //   // The backtrace is not always generated. Try to run this example
+  //   // with `RUST_BACKTRACE=1`.
+  //   if let Some(backtrace) = e.backtrace() {
+  //     writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
+  //   }
 
-    ::std::process::exit(1);
-  }
+  //   ::std::process::exit(1);
+  // }
 }
