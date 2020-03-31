@@ -12,7 +12,7 @@ use crate::errors::*;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Deck{
   // Is the name of the list that the Deck represents
-  pub name: String,
+  pub list_name: String,
   // Represents total numbers of cards in the list
   pub size: usize,
   // Represents the cumulative total effort of all the cards in the list
@@ -87,7 +87,7 @@ pub async fn build_decks(auth: &Auth, lists: Vec<List>) ->  Result<Vec<Deck>>{
 
     decks.push(
       Deck{
-        name: list.name,
+        list_name: list.name,
         size: cards.len(),
         score,
         unscored,
@@ -151,22 +151,22 @@ pub fn print_decks(decks: &[Deck], board_name: &str, filter: Option<&str>){
   let mut table = Table::new();
   let current_decks = filter_decks(decks, filter);
   let mut total = Deck {
-    name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
+    list_name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
 
   println!("{}", board_name);
   table.set_titles(row!["List", "cards", "score","estimated", "unscored"]);
   for deck in current_decks {
-    table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
+    table.add_row(row![deck.list_name, deck.size, deck.score, deck.estimated, deck.unscored]);
     total = add_deck(&total, &deck);
   }
-  table.add_row(row![bc => total.name, total.size, total.score, total.estimated, total.unscored]);
+  table.add_row(row![bc => total.list_name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
 }
 
 fn add_deck(total: &Deck, deck: &Deck) -> Deck{
   Deck{
-    name: total.name.clone(),
+    list_name: total.list_name.clone(),
     size: total.size + deck.size,
     score: total.score + deck.score,
     estimated: total.estimated + deck.estimated,
@@ -178,7 +178,7 @@ fn filter_decks(decks: &[Deck], filter: Option<&str> ) -> Vec<Deck>{
   decks.iter().fold(Vec::new(), |mut container, list| {
     match filter {
       Some(value) => {
-        if !list.name.contains(value) {
+        if !list.list_name.contains(value) {
           container.push(list.clone());
         }
       },
@@ -194,7 +194,7 @@ pub fn print_delta(decks: &[Deck], old_decks: &[Deck], board_name: &str, filter:
 
   table.set_titles(row!["List", "Cards", "Score","Estimated", "Unscored"]);
   let mut total = Deck {
-    name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
+    list_name: "TOTAL".to_string(), size: 0,score: 0, estimated: 0, unscored: 0,
   };
 
   let current_decks = filter_decks(decks, filter);
@@ -203,7 +203,7 @@ pub fn print_delta(decks: &[Deck], old_decks: &[Deck], board_name: &str, filter:
   println!("{}", board_name);
   for deck in current_decks {
     let matching_deck: Option<Deck> = other_decks.iter().fold(None, |match_deck, maybe_deck|
-                                         if maybe_deck.name == deck.name{
+                                         if maybe_deck.list_name == deck.list_name{
                                            Some(maybe_deck.clone())
                                          }else if match_deck.is_some(){
                                            match_deck
@@ -219,16 +219,16 @@ pub fn print_delta(decks: &[Deck], old_decks: &[Deck], board_name: &str, filter:
         let estimated = format!("{} ({})",deck.estimated, delta.get("estimated").unwrap());
         let unscored = format!("{} ({})",deck.unscored, delta.get("unscored").unwrap());
 
-        table.add_row(row![deck.name, cards, score, estimated, unscored]);
+        table.add_row(row![deck.list_name, cards, score, estimated, unscored]);
       },
 
       None => {
-        table.add_row(row![deck.name, deck.size, deck.score, deck.estimated, deck.unscored]);
+        table.add_row(row![deck.list_name, deck.size, deck.score, deck.estimated, deck.unscored]);
       }
     }
     total = add_deck(&total, &deck);
   }
-  table.add_row(row![bc => total.name, total.size, total.score, total.estimated, total.unscored]);
+  table.add_row(row![bc => total.list_name, total.size, total.score, total.estimated, total.unscored]);
   table.printstd();
   println!("* Printing in detailed mode. Numbers in () mark the difference from the last time card-counter was run and saved data.");
 }
