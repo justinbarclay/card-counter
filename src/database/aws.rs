@@ -1,36 +1,57 @@
+use crate::database::{Entries, Entry};
 /// Structures for serializing and de-serializing responses from AWS.
 use crate::errors::*;
-use crate::database::{Entry, Entries};
 use rusoto_core::Region;
-use rusoto_dynamodb::{DynamoDb, DynamoDbClient, ListTablesInput,
-                      // Structs important for create_table
-                      CreateTableInput, AttributeDefinition, ProvisionedThroughput,
-                      KeySchemaElement, PutItemInput, AttributeValue, GetItemInput, DescribeTableInput,
-                      DescribeTableError, QueryInput
+use rusoto_dynamodb::{
+  AttributeDefinition,
+  AttributeValue,
+  // Structs important for create_table
+  CreateTableInput,
+  DescribeTableError,
+  DescribeTableInput,
+  DynamoDb,
+  DynamoDbClient,
+  GetItemInput,
+  KeySchemaElement,
+  ListTablesInput,
+  ProvisionedThroughput,
+  PutItemInput,
+  QueryInput,
 };
 
-use serde_dynamodb;
 use crate::score::Deck;
+use serde_dynamodb;
 use std::collections::HashMap;
 
-pub async fn create_table(client: &DynamoDbClient) -> Result<()>{
+pub async fn create_table(client: &DynamoDbClient) -> Result<()> {
   let table_params = CreateTableInput {
-      table_name: "card-counter".to_string(),
-      attribute_definitions: [
-        AttributeDefinition{ attribute_name: "board_name".to_string(),
-                             attribute_type: "S".to_string(), },
-        AttributeDefinition{ attribute_name: "time_stamp".to_string(),
-                             attribute_type: "N".to_string(), },
-      ].to_vec(),
-      billing_mode: None,
-      global_secondary_indexes: None,
-      local_secondary_indexes: None,
-      key_schema:[ KeySchemaElement{ attribute_name: "board_name".to_string(),
-                                     key_type: "HASH".to_string(), },
-                   KeySchemaElement{ attribute_name: "time_stamp".to_string(),
-                                     key_type: "RANGE".to_string(), } ].to_vec()
-      ,
-    provisioned_throughput: Some(ProvisionedThroughput{
+    table_name: "card-counter".to_string(),
+    attribute_definitions: [
+      AttributeDefinition {
+        attribute_name: "board_name".to_string(),
+        attribute_type: "S".to_string(),
+      },
+      AttributeDefinition {
+        attribute_name: "time_stamp".to_string(),
+        attribute_type: "N".to_string(),
+      },
+    ]
+    .to_vec(),
+    billing_mode: None,
+    global_secondary_indexes: None,
+    local_secondary_indexes: None,
+    key_schema: [
+      KeySchemaElement {
+        attribute_name: "board_name".to_string(),
+        key_type: "HASH".to_string(),
+      },
+      KeySchemaElement {
+        attribute_name: "time_stamp".to_string(),
+        key_type: "RANGE".to_string(),
+      },
+    ]
+    .to_vec(),
+    provisioned_throughput: Some(ProvisionedThroughput {
       read_capacity_units: 1,
       write_capacity_units: 1,
     }),
@@ -38,58 +59,57 @@ pub async fn create_table(client: &DynamoDbClient) -> Result<()>{
     stream_specification: None,
     tags: None,
   };
-  match client.create_table(
-    table_params,
-  ).await{
+  match client.create_table(table_params).await {
     Ok(ok) => println!("{:?}", ok),
-    Err(err) => println!("{:?}", err)
+    Err(err) => println!("{:?}", err),
   }
   Ok(())
 }
 
-pub async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result<bool>{
-  let table_query = client.describe_table(DescribeTableInput{
-    table_name
-  }).await;
+pub async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result<bool> {
+  let table_query = client
+    .describe_table(DescribeTableInput { table_name })
+    .await;
 
   match table_query {
     Ok(_) => Ok(true),
     // We need to break down the error from
-
-    Err(DescribeTableError) => {
-      match DescribeTableError {
-        ResourceNotFound => Ok(false),
-        err => Err(err).chain_err(|| "Son of a bitch")
-      }
+    Err(DescribeTableError) => match DescribeTableError {
+      ResourceNotFound => Ok(false),
+      err => Err(err).chain_err(|| "Son of a bitch"),
     },
-    Err(err) => Err(err).chain_err(|| "Error talking to ")
+    Err(err) => Err(err).chain_err(|| "Error talking to "),
   }
 }
 
-pub fn add_timestamp(hash: &HashMap<String, AttributeValue>, timestamp: i32) -> Result<HashMap<String, AttributeValue>>{
+pub fn add_timestamp(
+  hash: &HashMap<String, AttributeValue>,
+  timestamp: i32,
+) -> Result<HashMap<String, AttributeValue>> {
   let mut deck = hash.clone();
-  deck.insert("time_stamp".to_string(), AttributeValue{
-    n: Some(timestamp.to_string()),
-    ..Default::default()
-  });
+  deck.insert(
+    "time_stamp".to_string(),
+    AttributeValue {
+      n: Some(timestamp.to_string()),
+      ..Default::default()
+    },
+  );
   Ok(deck)
 }
 
-pub async fn test_dynamo(thing: String) -> Result<()>{
+pub async fn test_dynamo(thing: String) -> Result<()> {
   // Boiler plate create pertinent AWS info
   let region = Region::Custom {
     name: "us-east-1".into(),
     endpoint: "http://localhost:8000".into(),
   };
 
-  let client = DynamoDbClient::new(
-    region
-  );
+  let client = DynamoDbClient::new(region);
   // Maybe create table
-  match does_table_exist(&client, "card-counter".to_string()).await{
-    Ok(true) => (), // Noop
+  match does_table_exist(&client, "card-counter".to_string()).await {
+    Ok(true) => (),                            // Noop
     Ok(false) => create_table(&client).await?, // Create table and pass up error on failure
-    Err(err) => return Err(err) // Return error
+    Err(err) => return Err(err),               // Return error
   }
 
   match client.list_tables(ListTablesInput::default()).await {
@@ -109,26 +129,26 @@ pub async fn test_dynamo(thing: String) -> Result<()>{
 
   // Add deck
   // Create demo data
-  let deck_1 = Deck{
+  let deck_1 = Deck {
     estimated: 10,
     score: 10,
     unscored: 20,
     list_name: "Test".to_string(),
-    size: 30
+    size: 30,
   };
 
-  let deck_2 = Deck{
+  let deck_2 = Deck {
     estimated: 20,
     score: 20,
     unscored: 40,
     list_name: "Testing".to_string(),
-    size: 60
+    size: 60,
   };
 
-  let board = Entry{
+  let board = Entry {
     board_name: "Test".to_string(),
     time_stamp: Entry::get_current_timestamp()?,
-    decks: [deck_1].to_vec()
+    decks: [deck_1].to_vec(),
   };
   let mut board_2 = board.clone();
 
@@ -144,7 +164,10 @@ pub async fn test_dynamo(thing: String) -> Result<()>{
   add_entry(&client, &board_2).await?;
 
   // Get deck
-  println!("{:?}", get_entry(&client, &board.board_name, board.time_stamp).await?);
+  println!(
+    "{:?}",
+    get_entry(&client, &board.board_name, board.time_stamp).await?
+  );
 
   //Get all decks
   let scan = get_all_entries(&client).await?;
@@ -157,76 +180,118 @@ pub async fn test_dynamo(thing: String) -> Result<()>{
   Ok(())
 }
 
-async fn add_entry(client: &DynamoDbClient, entry: &Entry) -> Result<()>{
-  client.put_item(
-    PutItemInput{
+async fn add_entry(client: &DynamoDbClient, entry: &Entry) -> Result<()> {
+  client
+    .put_item(PutItemInput {
       item: serde_dynamodb::to_hashmap(entry).chain_err(|| "Unable to parse database entry")?,
       table_name: "card-counter".to_string(),
       ..Default::default()
-    }
-  ).await.chain_err(|| "No more, please")?;
+    })
+    .await
+    .chain_err(|| "No more, please")?;
 
   Ok(())
 }
-async fn get_entry(client: &DynamoDb, board_name: &str, time_stamp: u64) -> Result<Option<Entry>>{
+async fn get_entry(client: &DynamoDb, board_name: &str, time_stamp: u64) -> Result<Option<Entry>> {
   let mut query: HashMap<String, AttributeValue> = HashMap::new();
-  query.insert("time_stamp".to_string(), AttributeValue{
-    n: Some(time_stamp.to_string()),
-    ..Default::default()
-  });
-  query.insert("board_name".to_string(), AttributeValue {
-    s: Some(board_name.to_string()),
-    ..Default::default()
-  });
+  query.insert(
+    "time_stamp".to_string(),
+    AttributeValue {
+      n: Some(time_stamp.to_string()),
+      ..Default::default()
+    },
+  );
+  query.insert(
+    "board_name".to_string(),
+    AttributeValue {
+      s: Some(board_name.to_string()),
+      ..Default::default()
+    },
+  );
 
-  let response = client.get_item(GetItemInput{
-    table_name: "card-counter".to_string(),
-    consistent_read: Some(true),
-    key: query,
-    ..Default::default()
-  }).await.chain_err(|| "Uh oh can't talk to dynamodb")?;
+  let response = client
+    .get_item(GetItemInput {
+      table_name: "card-counter".to_string(),
+      consistent_read: Some(true),
+      key: query,
+      ..Default::default()
+    })
+    .await
+    .chain_err(|| "Uh oh can't talk to dynamodb")?;
 
   match response.item {
     None => Ok(None),
-    Some(entry) =>Ok(Some(serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing dynamodb")?))
+    Some(entry) => Ok(Some(
+      serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing dynamodb")?,
+    )),
   }
 }
-async fn get_all_entries(client: &DynamoDbClient) -> Result<Entries>{
-  let scan = client.scan(rusoto_dynamodb::ScanInput{
-    table_name:"card-counter".to_string(),
-    ..Default::default()
-  }).await.chain_err(|| "Error getting all decks from DynamoDb")?;
+async fn get_all_entries(client: &DynamoDbClient) -> Result<Entries> {
+  let scan = client
+    .scan(rusoto_dynamodb::ScanInput {
+      table_name: "card-counter".to_string(),
+      ..Default::default()
+    })
+    .await
+    .chain_err(|| "Error getting all decks from DynamoDb")?;
 
-  match scan.items{
-    Some(entries) => Ok(entries.iter().map(to_entry).filter_map(Result::ok).collect()),
-    None => Ok(Vec::new())
+  match scan.items {
+    Some(entries) => Ok(
+      entries
+        .iter()
+        .map(to_entry)
+        .filter_map(Result::ok)
+        .collect(),
+    ),
+    None => Ok(Vec::new()),
   }
 }
 
-async fn get_all_after_date(client: &DynamoDbClient, board_name: &str, timestamp: u64) -> Result<Entries> {//-> Result<Entries>{
+async fn get_all_after_date(
+  client: &DynamoDbClient,
+  board_name: &str,
+  timestamp: u64,
+) -> Result<Entries> {
+  //-> Result<Entries>{
   let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
-  query_values.insert(":board_name".to_string(),
-                      AttributeValue{
-                        s: Some(board_name.to_string()),
-                        ..Default::default()
-                      });
-  query_values.insert(":timestamp".to_string(), AttributeValue {
-    n: Some(timestamp.to_string()),
-    ..Default::default()
-  });
+  query_values.insert(
+    ":board_name".to_string(),
+    AttributeValue {
+      s: Some(board_name.to_string()),
+      ..Default::default()
+    },
+  );
+  query_values.insert(
+    ":timestamp".to_string(),
+    AttributeValue {
+      n: Some(timestamp.to_string()),
+      ..Default::default()
+    },
+  );
 
-  let query = client.query(QueryInput{
-    consistent_read: Some(true),
-    key_condition_expression: Some("board_name = :board_name and time_stamp < :timestamp".to_string()),
-    expression_attribute_values: Some(query_values),
-    table_name: "card-counter".to_string(),
-    ..Default::default()
-  }).await.chain_err(|| "Error while talking to dynamodb.")?;
-  let entries: Entries = query.items.unwrap().iter().map(to_entry).filter_map(Result::ok).collect();
+  let query = client
+    .query(QueryInput {
+      consistent_read: Some(true),
+      key_condition_expression: Some(
+        "board_name = :board_name and time_stamp < :timestamp".to_string(),
+      ),
+      expression_attribute_values: Some(query_values),
+      table_name: "card-counter".to_string(),
+      ..Default::default()
+    })
+    .await
+    .chain_err(|| "Error while talking to dynamodb.")?;
+  let entries: Entries = query
+    .items
+    .unwrap()
+    .iter()
+    .map(to_entry)
+    .filter_map(Result::ok)
+    .collect();
   Ok(entries)
 }
 
 // Helper functions
-fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry>{
+fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
   serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
 }
