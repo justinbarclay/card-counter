@@ -34,3 +34,10 @@ impl Default for Entry {
   }
 }
 
+trait Database {
+  fn init() -> Result<()>;
+  fn add_entry(self, entry: Entry) -> Result<()>;
+  fn all_entries(self) -> Result<Entries>;
+  fn get_entry(self, board_name: String, time_stamp: u64) -> Result<Entry>;
+  fn query_entries(self, board_name: String, time_stamp: u64) -> Result<Entries>;
+}
