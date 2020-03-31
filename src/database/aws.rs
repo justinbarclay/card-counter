@@ -1,11 +1,12 @@
 /// Structures for serializing and de-serializing responses from AWS.
 use crate::errors::*;
-
+use crate::database::{Entry, Entries};
 use rusoto_core::Region;
 use rusoto_dynamodb::{DynamoDb, DynamoDbClient, ListTablesInput,
                       // Structs important for create_table
                       CreateTableInput, AttributeDefinition, ProvisionedThroughput,
-                      KeySchemaElement, PutItemInput, AttributeValue, GetItemInput, DescribeTableInput, DescribeTableError
+                      KeySchemaElement, PutItemInput, AttributeValue, GetItemInput, DescribeTableInput,
+                      DescribeTableError, QueryInput
 };
 
 use serde_dynamodb;
@@ -16,17 +17,17 @@ pub async fn create_table(client: &DynamoDbClient) -> Result<()>{
   let table_params = CreateTableInput {
       table_name: "card-counter".to_string(),
       attribute_definitions: [
-        AttributeDefinition{ attribute_name: "name".to_string(),
+        AttributeDefinition{ attribute_name: "board_name".to_string(),
                              attribute_type: "S".to_string(), },
-        AttributeDefinition{ attribute_name: "timestamp".to_string(),
+        AttributeDefinition{ attribute_name: "time_stamp".to_string(),
                              attribute_type: "N".to_string(), },
       ].to_vec(),
       billing_mode: None,
       global_secondary_indexes: None,
       local_secondary_indexes: None,
-      key_schema:[ KeySchemaElement{ attribute_name: "name".to_string(),
+      key_schema:[ KeySchemaElement{ attribute_name: "board_name".to_string(),
                                      key_type: "HASH".to_string(), },
-                   KeySchemaElement{ attribute_name: "timestamp".to_string(),
+                   KeySchemaElement{ attribute_name: "time_stamp".to_string(),
                                      key_type: "RANGE".to_string(), } ].to_vec()
       ,
     provisioned_throughput: Some(ProvisionedThroughput{
@@ -67,7 +68,7 @@ pub async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Re
 
 pub fn add_timestamp(hash: &HashMap<String, AttributeValue>, timestamp: i32) -> Result<HashMap<String, AttributeValue>>{
   let mut deck = hash.clone();
-  deck.insert("timestamp".to_string(), AttributeValue{
+  deck.insert("time_stamp".to_string(), AttributeValue{
     n: Some(timestamp.to_string()),
     ..Default::default()
   });
@@ -80,10 +81,10 @@ pub async fn test_dynamo(thing: String) -> Result<()>{
     name: "us-east-1".into(),
     endpoint: "http://localhost:8000".into(),
   };
+
   let client = DynamoDbClient::new(
     region
   );
-
   // Maybe create table
   match does_table_exist(&client, "card-counter".to_string()).await{
     Ok(true) => (), // Noop
@@ -107,58 +108,125 @@ pub async fn test_dynamo(thing: String) -> Result<()>{
   }
 
   // Add deck
-  let dynamo_deck = serde_dynamodb::to_hashmap(&Deck{
+  // Create demo data
+  let deck_1 = Deck{
     estimated: 10,
     score: 10,
     unscored: 20,
-    name: "Test".to_string(),
-    size: 30}).unwrap();
-  println!("{:?}", dynamo_deck);
-  println!("{:?}", add_timestamp(&dynamo_deck, 1000)?);
-  let result = client.put_item(
+    list_name: "Test".to_string(),
+    size: 30
+  };
+
+  let deck_2 = Deck{
+    estimated: 20,
+    score: 20,
+    unscored: 40,
+    list_name: "Testing".to_string(),
+    size: 60
+  };
+
+  let board = Entry{
+    board_name: "Test".to_string(),
+    time_stamp: Entry::get_current_timestamp()?,
+    decks: [deck_1].to_vec()
+  };
+  let mut board_2 = board.clone();
+
+  board_2.time_stamp = Entry::get_current_timestamp()?;
+  board_2.decks.push(deck_2);
+
+  std::thread::sleep(std::time::Duration::from_secs(1));
+  let query_at = Entry::get_current_timestamp()?;
+  std::thread::sleep(std::time::Duration::from_secs(1));
+
+  add_entry(&client, &board).await?;
+
+  add_entry(&client, &board_2).await?;
+
+  // Get deck
+  println!("{:?}", get_entry(&client, &board.board_name, board.time_stamp).await?);
+
+  //Get all decks
+  let scan = get_all_entries(&client).await?;
+  println!("{:?}", scan.len());
+
+  // Get all decks in range
+  let entries: Entries = get_all_after_date(&client, &board.board_name, board.time_stamp).await?;
+  println!("{:?}", entries.len());
+  // println!("{:?}", get_all_after_date(&client, &board.board_name, board.time_stamp).await?);
+  Ok(())
+}
+
+async fn add_entry(client: &DynamoDbClient, entry: &Entry) -> Result<()>{
+  client.put_item(
     PutItemInput{
-      item: add_timestamp(&dynamo_deck, 1000)?,
+      item: serde_dynamodb::to_hashmap(entry).chain_err(|| "Unable to parse database entry")?,
       table_name: "card-counter".to_string(),
       ..Default::default()
     }
   ).await.chain_err(|| "No more, please")?;
-  println!("{:?}", result);
 
-  // Get deck
+  Ok(())
+}
+async fn get_entry(client: &DynamoDb, board_name: &str, time_stamp: u64) -> Result<Option<Entry>>{
   let mut query: HashMap<String, AttributeValue> = HashMap::new();
-  query.insert("timestamp".to_string(), AttributeValue{
-    n: Some(1000.to_string()),
+  query.insert("time_stamp".to_string(), AttributeValue{
+    n: Some(time_stamp.to_string()),
     ..Default::default()
   });
-  query.insert("name".to_string(), AttributeValue{
-    s: Some("Test".to_string()),
+  query.insert("board_name".to_string(), AttributeValue {
+    s: Some(board_name.to_string()),
     ..Default::default()
   });
 
   let response = client.get_item(GetItemInput{
-             attributes_to_get: None,
-             consistent_read: None,
-             expression_attribute_names: None,
-             key: query,
-             projection_expression: None,
-             return_consumed_capacity: None,
-             table_name: "card-counter".to_string(),
-           })
-           .await
-    .unwrap();
-  let deck: Deck = serde_dynamodb::from_hashmap(response.item.unwrap()).unwrap();
-  println!("{:?}", deck);
+    table_name: "card-counter".to_string(),
+    consistent_read: Some(true),
+    key: query,
+    ..Default::default()
+  }).await.chain_err(|| "Uh oh can't talk to dynamodb")?;
 
-  //Get all decks
+  match response.item {
+    None => Ok(None),
+    Some(entry) =>Ok(Some(serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing dynamodb")?))
+  }
+}
+async fn get_all_entries(client: &DynamoDbClient) -> Result<Entries>{
   let scan = client.scan(rusoto_dynamodb::ScanInput{
     table_name:"card-counter".to_string(),
     ..Default::default()
-  }).await.unwrap();
-  let decks: Vec<Deck> = scan.items.unwrap().iter().map(to_deck).filter_map(Result::ok).collect();
-  println!("{:?}", decks);
-  Ok(())
+  }).await.chain_err(|| "Error getting all decks from DynamoDb")?;
+
+  match scan.items{
+    Some(entries) => Ok(entries.iter().map(to_entry).filter_map(Result::ok).collect()),
+    None => Ok(Vec::new())
+  }
 }
 
-fn to_deck(hash: &HashMap<String, AttributeValue>) -> Result<Deck>{
-  serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing deck")
+async fn get_all_after_date(client: &DynamoDbClient, board_name: &str, timestamp: u64) -> Result<Entries> {//-> Result<Entries>{
+  let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
+  query_values.insert(":board_name".to_string(),
+                      AttributeValue{
+                        s: Some(board_name.to_string()),
+                        ..Default::default()
+                      });
+  query_values.insert(":timestamp".to_string(), AttributeValue {
+    n: Some(timestamp.to_string()),
+    ..Default::default()
+  });
+
+  let query = client.query(QueryInput{
+    consistent_read: Some(true),
+    key_condition_expression: Some("board_name = :board_name and time_stamp < :timestamp".to_string()),
+    expression_attribute_values: Some(query_values),
+    table_name: "card-counter".to_string(),
+    ..Default::default()
+  }).await.chain_err(|| "Error while talking to dynamodb.")?;
+  let entries: Entries = query.items.unwrap().iter().map(to_entry).filter_map(Result::ok).collect();
+  Ok(entries)
+}
+
+// Helper functions
+fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry>{
+  serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
 }
