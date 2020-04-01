@@ -1,5 +1,5 @@
 use std::io::prelude::*;
-use std::io::{BufReader, BufWriter, SeekFrom};
+use std::{fmt, io::{BufReader, BufWriter, SeekFrom}};
 
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
@@ -7,10 +7,6 @@ use serde::{Deserialize, Serialize};
 use crate::database::file::config_file;
 use crate::errors::*;
 use crate::trello::Auth;
-
-trait Default {
-  fn default() -> Self;
-}
 
 // The possible values that trello accepts for token expiration times
 pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
@@ -32,18 +28,30 @@ impl Default for Trello {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 struct AWS {
   secret_access_key: String,
   access_key_id: String,
 }
 
-impl Default for AWS {
-  fn default() -> AWS {
-    AWS {
-      secret_access_key: "".to_string(),
-      access_key_id: "".to_string(),
+#[derive(Clone, Serialize, Deserialize, Debug)]
+enum Preference {
+  Local,
+  Aws,
+}
+
+impl fmt::Display for Preference {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+        Preference::Local => write!(f, "Local"),
+        Preference::Aws => write!(f, "Aws")
     }
+  }
+}
+
+impl Default for Preference {
+  fn default() -> Self {
+    Preference::Local
   }
 }
 
@@ -51,13 +59,16 @@ impl Default for AWS {
 pub struct Config {
   trello: Trello,
   aws: Option<AWS>,
+  #[serde(default)]
+  database: Preference,
 }
 
 impl Default for Config {
   fn default() -> Config {
     Config {
       trello: Trello::default(),
-      aws: Some(AWS::default()),
+      aws: None,
+      database: Preference::default(),
     }
   }
 }
@@ -109,6 +120,17 @@ fn aws_details(aws: &AWS) -> Result<AWS> {
   })
 }
 
+fn database_preference() -> Result<Preference>{
+  let preferences = [Preference::Local, Preference::Aws];
+   let index = Select::new()
+    .with_prompt("What database would you prefer?")
+    .items(&preferences)
+    .default(0)
+    .interact().chain_err(|| "There was an error setting database preference." )?;
+
+  Ok(preferences[index].clone())
+}
+
 impl Config {
   pub fn from_file() -> Result<Option<Config>> {
     let config = match config_file() {
@@ -137,6 +159,7 @@ impl Config {
   pub fn user_update_prompts(mut self) -> Result<Config> {
     let trello = trello_details(&self.trello)?;
     self.trello = trello;
+    self.database = database_preference()?;
     Ok(self)
   }
 
