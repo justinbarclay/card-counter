@@ -97,8 +97,11 @@ pub fn get_database() -> Database {
 /// the database file.
 pub fn save_database(db: Database) -> Result<()> {
   // No Sane default: We want to error if we can't open or access the File handle
-  let mut writer = BufWriter::new(database_file().chain_err(|| "Unable to open database")?);
+  let file = database_file().chain_err(|| "Unable to open database")?;
 
+  // Clear out file before writing to it.
+  file.set_len(0)?;
+  let mut writer = BufWriter::new(file);
   // There is no safe default behavior we can perform here.
   let json = serde_json::to_string(&db).chain_err(|| "Unable to parse database")?;
 
