@@ -23,7 +23,9 @@ use rusoto_dynamodb::{
 use super::config::Config;
 use crate::score::Deck;
 use serde_dynamodb;
-use std::collections::HashMap;
+use std::{convert::TryInto, collections::HashMap};
+use chrono::NaiveDateTime;
+use dialoguer::Select;
 
 async fn create_table(client: &DynamoDbClient) -> Result<()> {
   let table_params = CreateTableInput {
@@ -230,21 +232,38 @@ impl Database for Aws {
   }
 }
 
-async fn get_entry(client: &DynamoDb, board_name: &str, time_stamp: u64) -> Result<Option<Entry>> {
-  unimplemented!()
-}
-async fn get_all_entries(client: &DynamoDbClient) -> Result<Entries> {
-  unimplemented!()
+impl Aws {
+  // TODO: This doesn't seem efficient
+  pub async fn get_decks_by_date(self, board_id: &str) -> Result<Option<Vec<Deck>>>{
+    let entries: Entries = self.all_entries().await?;
+    let mut board = entries.iter().filter(|entry| entry.board_name == board_id).map(|entry| entry.clone());
+    let mut keys: Vec<u64> = board.clone().map(|entry| entry.time_stamp).collect();
+
+    keys.sort();
+    let date = select_date(&keys).unwrap();
+
+    match board.find(|entry| entry.time_stamp == date){
+      Some(entry) => Ok(Some(entry.decks)),
+      None => Ok(None)
+    }
+  }
 }
 
-async fn get_all_after_date(
-  client: &DynamoDbClient,
-  board_name: &str,
-  timestamp: u64,
-) -> Result<Entries> {
-  unimplemented!()
-}
+// TODO: Get rid of
+fn select_date(keys: &[u64]) -> Option<u64>{
+  let items: Vec<NaiveDateTime> = keys
+    .iter()
+    .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
+    .collect();
+  let index: usize = Select::new()
+    .with_prompt("Select a date: ")
+    .items(&items)
+    .default(0)
+    .interact()
+    .unwrap();
 
+  Some(keys[index])
+}
 // Helper functions
 fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
   serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")

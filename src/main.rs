@@ -16,13 +16,14 @@ mod score;
 mod trello;
 
 use database::{
-  aws,
+  aws::Aws,
   config::Config,
   file::{get_decks_by_date, save_local_database},
+  Database, Entry,
 };
 use errors::Result;
-use score::{build_decks, print_decks, print_delta, select_board};
-use trello::{get_board, get_lists, Auth};
+use score::{build_decks, print_decks, print_delta, select_board, Deck};
+use trello::{get_board, get_lists, Auth, Board};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Result<Option<Auth>> {
@@ -60,10 +61,10 @@ fn auth_from_env() -> Option<Auth> {
   Some(Auth { key, token })
 }
 
-async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<()> {
+async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
   let filter: Option<&str> = matches.value_of("filter");
   // Parse arguments, if board_id isn't found
-  let board = match matches.value_of("board_id") {
+  let board: Board = match matches.value_of("board_id") {
     Some(id) => get_board(id, auth).await?,
     None => select_board(auth).await?,
   };
@@ -75,19 +76,42 @@ async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<()> {
     if let Some(old_decks) = get_decks_by_date(&board.id) {
       print_delta(&decks, &old_decks, &board.name, filter);
     } else {
-      println!("Unable to retrieve an deck from the database.");
+      println!("Unable to retrieve any decks from the database.");
       print_decks(&decks, &board.name, filter);
     }
   } else {
     print_decks(&decks, &board.name, filter);
   }
 
-  match matches.value_of("save") {
-    Some("true") => save_local_database(&board.id, &decks)?,
-    _ => (),
+  Ok((board, decks))
+}
+
+async fn show_score_aws(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
+  let filter: Option<&str> = matches.value_of("filter");
+  // Parse arguments, if board_id isn't found
+  let board: Board = match matches.value_of("board_id") {
+    Some(id) => get_board(id, auth).await?,
+    None => select_board(auth).await?,
   };
 
-  Ok(())
+  let cards = get_lists(auth, &board.id).await?;
+  let decks = build_decks(auth, cards).await?;
+
+  if matches.is_present("detailed") {
+    if let Some(old_decks) = Aws::init(Config::from_file_or_default()?)
+      .await?
+    .get_decks_by_date(&board.id)
+      .await? {
+        print_delta(&decks, &old_decks, &board.name, filter);
+      } else {
+        println!("Unable to retrieve any decks from the database.");
+        print_decks(&decks, &board.name, filter);
+      }
+  } else {
+    print_decks(&decks, &board.name, filter);
+  }
+
+  Ok((board, decks))
 }
 // Run all of network code asynchronously using tokio and await
 async fn run() -> Result<()> {
@@ -115,6 +139,13 @@ async fn run() -> Result<()> {
          .help("Save the current request in the database. Defaults to true.")
          .default_value("true")
          .takes_value(true))
+    .arg(Arg::with_name("database")
+         .short("D")
+         .long("database")
+         .value_name("DATABASE")
+         .default_value("local")
+        .help("Choose the database you want to save current request in.")
+         .possible_values(&["local", "aws"]))
     .arg(Arg::with_name("detailed")
          .short("d")
          .long("detailed")
@@ -123,8 +154,9 @@ async fn run() -> Result<()> {
                 .about("Edit properties associated with card-counter"))
     .get_matches();
 
+  let config = Config::from_file_or_default()?;
   if matches.subcommand_matches("config").is_some() {
-    Config::from_file_or_default()?.update_file()?;
+    config.update_file()?;
     std::process::exit(0)
   }
 
@@ -135,7 +167,21 @@ async fn run() -> Result<()> {
     None => std::process::exit(1),
   };
 
-  show_score(&auth, &matches).await
+  let (board, decks) = show_score_aws(&auth, &matches).await?;
+
+  let database: Aws = Aws::init(config).await?;
+  database.add_entry(Entry{
+      board_name: board.id,
+      time_stamp: Entry::get_current_timestamp()?,
+      decks,
+  }).await?;
+
+  println!("{:?}", database.all_entries().await?);
+  // match matches.value_of("save") {
+  //   Some(true) => save_database(&board.id, &decks)?,
+  //   () => ()
+  // };
+  Ok(())
 }
 
 // The above main gives you maximum control over how the error is
@@ -145,23 +191,22 @@ async fn run() -> Result<()> {
 #[allow(dead_code)]
 #[tokio::main]
 async fn main() {
-  aws::test_dynamo("hello".to_string()).await;
-  // if let Err(ref e) = run().await {
-  //   let stderr = &mut ::std::io::stderr();
-  //   let errmsg = "Error writing to stderr";
+  if let Err(ref e) = run().await {
+    let stderr = &mut ::std::io::stderr();
+    let errmsg = "Error writing to stderr";
 
-  //   writeln!(stderr, "error: {}", e).expect(errmsg);
+    writeln!(stderr, "error: {}", e).expect(errmsg);
 
-  //   for e in e.iter().skip(1) {
-  //     writeln!(stderr, "caused by: {}", e).expect(errmsg);
-  //   }
+    for e in e.iter().skip(1) {
+      writeln!(stderr, "caused by: {}", e).expect(errmsg);
+    }
 
-  //   // The backtrace is not always generated. Try to run this example
-  //   // with `RUST_BACKTRACE=1`.
-  //   if let Some(backtrace) = e.backtrace() {
-  //     writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
-  //   }
+    // The backtrace is not always generated. Try to run this example
+    // with `RUST_BACKTRACE=1`.
+    if let Some(backtrace) = e.backtrace() {
+      writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
+    }
 
-  //   ::std::process::exit(1);
-  // }
+    ::std::process::exit(1);
+  }
 }

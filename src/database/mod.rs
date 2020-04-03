@@ -3,18 +3,19 @@ use crate::score::Deck;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
+
 pub mod aws;
 pub mod config;
 pub mod file;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Entry {
-  board_name: String,
-  time_stamp: u64,
-  decks: Vec<Deck>,
+pub struct Entry {
+  pub board_name: String,
+  pub time_stamp: u64,
+  pub decks: Vec<Deck>,
 }
-
 type Entries = Vec<Entry>;
+
 
 impl Entry {
   pub fn get_current_timestamp() -> Result<u64> {
