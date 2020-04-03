@@ -16,7 +16,6 @@ pub struct Entry {
 }
 type Entries = Vec<Entry>;
 
-
 impl Entry {
   pub fn get_current_timestamp() -> Result<u64> {
     Ok(

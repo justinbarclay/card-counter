@@ -1,5 +1,8 @@
 use std::io::prelude::*;
-use std::{fmt, io::{BufReader, BufWriter, SeekFrom}};
+use std::{
+  fmt,
+  io::{BufReader, BufWriter, SeekFrom},
+};
 
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
@@ -43,8 +46,8 @@ enum Preference {
 impl fmt::Display for Preference {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-        Preference::Local => write!(f, "Local"),
-        Preference::Aws => write!(f, "Aws")
+      Preference::Local => write!(f, "Local"),
+      Preference::Aws => write!(f, "Aws"),
     }
   }
 }
@@ -120,13 +123,14 @@ fn aws_details(aws: &AWS) -> Result<AWS> {
   })
 }
 
-fn database_preference() -> Result<Preference>{
+fn database_preference() -> Result<Preference> {
   let preferences = [Preference::Local, Preference::Aws];
-   let index = Select::new()
+  let index = Select::new()
     .with_prompt("What database would you prefer?")
     .items(&preferences)
     .default(0)
-    .interact().chain_err(|| "There was an error setting database preference." )?;
+    .interact()
+    .chain_err(|| "There was an error setting database preference.")?;
 
   Ok(preferences[index].clone())
 }

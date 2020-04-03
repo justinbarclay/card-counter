@@ -100,13 +100,14 @@ async fn show_score_aws(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(
   if matches.is_present("detailed") {
     if let Some(old_decks) = Aws::init(Config::from_file_or_default()?)
       .await?
-    .get_decks_by_date(&board.id)
-      .await? {
-        print_delta(&decks, &old_decks, &board.name, filter);
-      } else {
-        println!("Unable to retrieve any decks from the database.");
-        print_decks(&decks, &board.name, filter);
-      }
+      .get_decks_by_date(&board.id)
+      .await?
+    {
+      print_delta(&decks, &old_decks, &board.name, filter);
+    } else {
+      println!("Unable to retrieve any decks from the database.");
+      print_decks(&decks, &board.name, filter);
+    }
   } else {
     print_decks(&decks, &board.name, filter);
   }
@@ -170,11 +171,13 @@ async fn run() -> Result<()> {
   let (board, decks) = show_score_aws(&auth, &matches).await?;
 
   let database: Aws = Aws::init(config).await?;
-  database.add_entry(Entry{
+  database
+    .add_entry(Entry {
       board_name: board.id,
       time_stamp: Entry::get_current_timestamp()?,
       decks,
-  }).await?;
+    })
+    .await?;
 
   println!("{:?}", database.all_entries().await?);
   // match matches.value_of("save") {

@@ -22,10 +22,10 @@ use rusoto_dynamodb::{
 
 use super::config::Config;
 use crate::score::Deck;
-use serde_dynamodb;
-use std::{convert::TryInto, collections::HashMap};
 use chrono::NaiveDateTime;
 use dialoguer::Select;
+use serde_dynamodb;
+use std::{collections::HashMap, convert::TryInto};
 
 async fn create_table(client: &DynamoDbClient) -> Result<()> {
   let table_params = CreateTableInput {
@@ -234,23 +234,26 @@ impl Database for Aws {
 
 impl Aws {
   // TODO: This doesn't seem efficient
-  pub async fn get_decks_by_date(self, board_id: &str) -> Result<Option<Vec<Deck>>>{
+  pub async fn get_decks_by_date(self, board_id: &str) -> Result<Option<Vec<Deck>>> {
     let entries: Entries = self.all_entries().await?;
-    let mut board = entries.iter().filter(|entry| entry.board_name == board_id).map(|entry| entry.clone());
+    let mut board = entries
+      .iter()
+      .filter(|entry| entry.board_name == board_id)
+      .map(|entry| entry.clone());
     let mut keys: Vec<u64> = board.clone().map(|entry| entry.time_stamp).collect();
 
     keys.sort();
     let date = select_date(&keys).unwrap();
 
-    match board.find(|entry| entry.time_stamp == date){
+    match board.find(|entry| entry.time_stamp == date) {
       Some(entry) => Ok(Some(entry.decks)),
-      None => Ok(None)
+      None => Ok(None),
     }
   }
 }
 
 // TODO: Get rid of
-fn select_date(keys: &[u64]) -> Option<u64>{
+fn select_date(keys: &[u64]) -> Option<u64> {
   let items: Vec<NaiveDateTime> = keys
     .iter()
     .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
