@@ -192,11 +192,7 @@ pub fn get_latest_entry(db: Database, board_id: &str) -> Option<Vec<Deck>> {
   }
 }
 
-fn select_date(database: &HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &str) -> Option<u64> {
-  let board = database.get(board_id)?;
-
-  let mut keys: Vec<u64> = board.keys().map(|key| key.clone()).collect();
-  keys.sort();
+fn select_date(keys: &[u64]) -> Option<u64> {
   let items: Vec<NaiveDateTime> = keys
     .iter()
     .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
@@ -214,7 +210,12 @@ fn select_date(database: &HashMap<String, HashMap<u64, Vec<Deck>>>, board_id: &s
 // This looks like a database error
 pub fn get_decks_by_date(board_id: &str) -> Option<Vec<Deck>> {
   let database = get_database();
-  let date = select_date(&database, board_id)?;
+
+  let board = database.get(board_id)?;
+
+  let mut keys: Vec<u64> = board.keys().map(|key| key.clone()).collect();
+  keys.sort();
+  let date = select_date(&keys)?;
 
   let decks = database.get(board_id)?.get(&date)?.to_vec();
 
