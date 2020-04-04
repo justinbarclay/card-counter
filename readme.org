@@ -2,20 +2,29 @@
 A CLI for quickly counting cards remaining in trello lists
 
 #+BEGIN_SRC bash
-Card Counter 0.2.2
+Card Counter 0.4.1
 Justin Barclay <justincbarclay@gmail.com>
-Counts the number of cards that exist per list on a trello board.
+A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.
 
 USAGE:
-    card-counter [OPTIONS] --board-id <ID>
+    card-counter [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -d, --detailed    Prints detailed stats for your trello lists, including the change in cards and scores from a
+                      previous run.
+    -h, --help        Prints help information
+    -V, --version     Prints version information
 
 OPTIONS:
-    -b, --board-id <ID>      The ID of the board where the cards are meant to be counted from.
-    -f, --filter <FILTER>    Removes all list with a name that contains the substring FILTER
+    -b, --board-id <ID>          The ID of the board where the cards are meant to be counted from.
+    -D, --database <DATABASE>    Choose the database you want to save current request in. [default: local]  [possible
+                                 values: local, aws]
+    -f, --filter <FILTER>        Removes all list with a name that contains the substring FILTER
+    -s, --save <SAVE>            Save the current request in the database. Defaults to true. [default: true]
+
+SUBCOMMANDS:
+    config    Edit properties associated with card-counter
+    help      Prints this message or the help of the given subcommand(s)
 #+END_SRC
 ** Run
 To run card-counter it expects to have your ~trello api key~ and ~trello api token~ stored as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~. For further documentation on how to get an api key and token from trello, read the documentation at https://developers.trello.com/page/authorization.
@@ -24,7 +33,48 @@ export TRELLO_API_KEY=""
 export TRELLO_API_TOKEN=""
 card-counter -b ID -f FILTER
 #+END_SRC
+** AWS
+As of Version 0.5.0 Card-Counter supports syncing you stats to a DynamoDB. Now, it's doesn't only have to be your responsibility to track your progress for your sprint!
 
+*** Authentication
+~card-counter~ will check several locations for your AWS credentials. 
+In order:
+1. Environment Variables
+2. Credential Files
+3. IAM ECS Container Profile
+4. IAM EC2 Instance Profile
+
+*** DynamoDB Table
+If you run ~card-counter~ with the option ~--database aws~, for example ~card-counter -f NoBurn --database aws~, it will check to see if a table with the name "card-counter" exists. If it can not find such a table it will ask you if you would like it to create one for you.
+
+If however, you would like to manage the table for yourself, you could use the following terraform to create the table for you:
+#+NAME DynamoDB config
+#+BEGIN_SRC terraform
+resource "aws_dynamodb_table" "basic-dynamodb-table" {
+  name           = "card-counter"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "board_id"
+  range_key      = "time_stamp"
+
+  attribute {
+    name = "board_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "time_stamp"
+    type = "N"
+  }
+
+  tags = {
+    Name        = "dynamodb-table-1"
+    Environment = "production"
+  }
+}
+#+END_SRC
+ 
 ** Build
 #+BEGIN_SRC bash
 cargo build --release
