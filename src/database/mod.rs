@@ -42,5 +42,9 @@ pub trait Database {
   async fn add_entry(&self, entry: Entry) -> Result<()>;
   async fn all_entries(&self) -> Result<Entries>;
   async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>>;
-  async fn query_entries(&self, board_name: String, time_stamp: Option<u64>) -> Result<Option<Vec<Deck>>>;
+  async fn query_entries(
+    &self,
+    board_name: String,
+    time_stamp: Option<u64>,
+  ) -> Result<Option<Vec<Deck>>>;
 }

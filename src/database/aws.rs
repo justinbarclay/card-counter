@@ -80,8 +80,8 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
     // We need to break down the error from
     Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => {
       return Ok(false)
-    },
-    Err(err) => Err(err).chain_err(|| "Unable to connect to DynamoDB.")
+    }
+    Err(err) => Err(err).chain_err(|| "Unable to connect to DynamoDB."),
   }
 }
 
@@ -176,7 +176,7 @@ impl Database for Aws {
     let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
     let query_string = match time_stamp {
       Some(_) => "board_name = :board_name and time_stamp < :timestamp".to_string(),
-      None => "board_name = :board_name".to_string()
+      None => "board_name = :board_name".to_string(),
     };
 
     query_values.insert(
@@ -187,7 +187,7 @@ impl Database for Aws {
       },
     );
 
-    if let Some(timestamp) = time_stamp{
+    if let Some(timestamp) = time_stamp {
       query_values.insert(
         ":timestamp".to_string(),
         AttributeValue {
@@ -201,9 +201,7 @@ impl Database for Aws {
       .client
       .query(QueryInput {
         consistent_read: Some(true),
-        key_condition_expression: Some(
-          query_string,
-        ),
+        key_condition_expression: Some(query_string),
         expression_attribute_values: Some(query_values),
         table_name: "card-counter".to_string(),
         ..Default::default()
@@ -223,7 +221,6 @@ impl Database for Aws {
 }
 
 impl Aws {
-
   // Init tries to initiate a connection to DynamoDB.
   // If it fails to connect to DynamoDB it will panic, however if it can connect and does not find a table it will then create one.
   // Should creating the table fail it will, again, panic.
@@ -240,17 +237,20 @@ impl Aws {
     // Maybe create table
     let table_exists = does_table_exist(&__self.client, "card-counter".to_string()).await?;
 
-    if !table_exists{
+    if !table_exists {
       match Confirmation::new()
-        .with_text("Unable to find \"card-counter\" table in DynamoDB. Would you like to create a table?")
-        .interact().chain_err(|| "There was a problem registering your response.")?{
-          true => create_table(&__self.client).await?,
-          false => {
-            println!{"Unable to update or query table."}
-            ::std::process::exit(1);
-          }
+        .with_text(
+          "Unable to find \"card-counter\" table in DynamoDB. Would you like to create a table?",
+        )
+        .interact()
+        .chain_err(|| "There was a problem registering your response.")?
+      {
+        true => create_table(&__self.client).await?,
+        false => {
+          println! {"Unable to update or query table."}
+          ::std::process::exit(1);
         }
-
+      }
     }
 
     Ok(__self)

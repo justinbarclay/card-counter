@@ -86,7 +86,11 @@ async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board
   Ok((board, decks))
 }
 
-async fn show_score_aws(auth: Auth, matches: &clap::ArgMatches<'_>, client: Box<dyn Database>) -> Result<(Board, Vec<Deck>)> {
+async fn show_score_aws(
+  auth: Auth,
+  matches: &clap::ArgMatches<'_>,
+  client: Box<dyn Database>,
+) -> Result<(Board, Vec<Deck>)> {
   let filter: Option<&str> = matches.value_of("filter");
   // Parse arguments, if board_id isn't found
   let board: Board = match matches.value_of("board_id") {
@@ -98,10 +102,7 @@ async fn show_score_aws(auth: Auth, matches: &clap::ArgMatches<'_>, client: Box<
   let decks = build_decks(&auth, cards).await?;
 
   if matches.is_present("detailed") {
-    if let Some(old_decks) = client
-      .query_entries(board.id.to_string(), None)
-      .await?
-    {
+    if let Some(old_decks) = client.query_entries(board.id.to_string(), None).await? {
       print_delta(&decks, &old_decks, &board.name, filter);
     } else {
       println!("Unable to retrieve any decks from the database.");
@@ -168,24 +169,25 @@ async fn run() -> Result<()> {
   };
   let database = Box::new(Aws::init(&config).await?);
 
-  let (board, decks) = match matches.value_of("database"){
+  let (board, decks) = match matches.value_of("database") {
     Some("local") => show_score(auth, &matches).await?,
-    Some("aws") =>  show_score_aws(auth.clone(), &matches, database.clone()).await?,
-    _ => panic!("Unable to find a matching database")
+    Some("aws") => show_score_aws(auth.clone(), &matches, database.clone()).await?,
+    _ => panic!("Unable to find a matching database"),
   };
 
   if matches.value_of("save").is_some() {
-    match matches.value_of("database"){
+    match matches.value_of("database") {
       Some("local") => save_local_database(&board.id, &decks)?,
-      Some("aws") => { database
-                       .add_entry(Entry {
-                         board_name: board.id,
-                         time_stamp: Entry::get_current_timestamp()?,
-                         decks,
-                       })
-                       .await?;
-      },
-      _ => ()
+      Some("aws") => {
+        database
+          .add_entry(Entry {
+            board_name: board.id,
+            time_stamp: Entry::get_current_timestamp()?,
+            decks,
+          })
+          .await?;
+      }
+      _ => (),
     };
   }
   Ok(())
