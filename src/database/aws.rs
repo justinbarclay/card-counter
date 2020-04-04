@@ -1,5 +1,6 @@
+//
 use crate::database::{Database, Entries, Entry};
-/// Structures for serializing and de-serializing responses from AWS.
+// Structures for serializing and de-serializing responses from AWS.
 use crate::errors::*;
 use async_trait::async_trait;
 use rusoto_core::Region;
@@ -26,6 +27,13 @@ use chrono::NaiveDateTime;
 use dialoguer::{Confirmation, Select};
 use serde_dynamodb;
 use std::{collections::HashMap, convert::TryInto};
+
+/////////////////////////
+// Helper Functions
+/////////////////////////
+// Functions for interacting with and dealing with
+// DynamoDB
+
 
 async fn create_table(client: &DynamoDbClient) -> Result<()> {
   let table_params = CreateTableInput {
@@ -85,6 +93,29 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
   }
 }
 
+// TODO: Get rid of
+fn select_date(keys: &[u64]) -> Option<u64> {
+  let items: Vec<NaiveDateTime> = keys
+    .iter()
+    .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
+    .collect();
+  let index: usize = Select::new()
+    .with_prompt("Select a date: ")
+    .items(&items)
+    .default(0)
+    .interact()
+    .unwrap();
+
+  Some(keys[index])
+}
+// Helper functions
+fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
+  serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
+}
+
+/////////////////////////
+// AWS
+/////////////////////////
 #[derive(Clone)]
 pub struct Aws {
   client: DynamoDbClient,
@@ -92,6 +123,7 @@ pub struct Aws {
 
 #[async_trait]
 impl Database for Aws {
+  /// Adds an entry into DynamoDB. May return an error if there are problems parsing an Entry into a hashmap or when trying to talk to DynamoDB
   async fn add_entry(&self, entry: Entry) -> Result<()> {
     self
       .client
@@ -101,12 +133,13 @@ impl Database for Aws {
         ..Default::default()
       })
       .await
-      .chain_err(|| "No more, please")?;
+      .chain_err(|| "Unable to add entry to DynamoDB.")?;
 
     Ok(())
   }
 
-  async fn all_entries(&self) -> Result<Entries> {
+  /// Retrieves all entries for the `card-counter` table. It will return an error if there was a problem talking to DynamoDB.
+  async fn all_entries(&self) -> Result<Option<Entries>> {
     let scan = self
       .client
       .scan(rusoto_dynamodb::ScanInput {
@@ -117,17 +150,18 @@ impl Database for Aws {
       .chain_err(|| "Error getting all decks from DynamoDb")?;
 
     match scan.items {
-      Some(entries) => Ok(
+      Some(entries) => Ok(Some(
         entries
           .iter()
           .map(to_entry)
           .filter_map(Result::ok)
-          .collect(),
+          .collect()),
       ),
-      None => Ok(Vec::new()),
+      None => Ok(None)
     }
   }
 
+  /// Searches DynamoDB for an entry that contains board_id and time_stamp. It will return an error if there was an issue talking to DynamoDB or parsing the returned Entry.
   async fn get_entry(
     &self,
     board_name: String,
@@ -158,31 +192,32 @@ impl Database for Aws {
         ..Default::default()
       })
       .await
-      .chain_err(|| "Uh oh can't talk to dynamodb")?;
+      .chain_err(|| "Unable to talk to DynamoDB")?;
 
     match response.item {
       None => Ok(None),
       Some(entry) => Ok(Some(
-        serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing dynamodb")?,
+        serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing entry.")?,
       )),
     }
   }
 
+  /// Returns a selection of Entries that match the board_id and optionally all entries with board_id and have a timestampe greater than time_stamp. It can return an error when prompting a user or when talking to DynamoDB.
   async fn query_entries(
     &self,
-    board_name: String,
+    board_id: String,
     time_stamp: Option<u64>,
   ) -> Result<Option<Vec<Deck>>> {
     let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
     let query_string = match time_stamp {
-      Some(_) => "board_name = :board_name and time_stamp < :timestamp".to_string(),
-      None => "board_name = :board_name".to_string(),
+      Some(_) => "board_id = :board_id and time_stamp > :timestamp".to_string(),
+      None => "board_id = :board_id".to_string(),
     };
 
     query_values.insert(
-      ":board_name".to_string(),
+      ":board_id".to_string(),
       AttributeValue {
-        s: Some(board_name.to_string()),
+        s: Some(board_id.to_string()),
         ..Default::default()
       },
     );
@@ -221,9 +256,9 @@ impl Database for Aws {
 }
 
 impl Aws {
-  // Init tries to initiate a connection to DynamoDB.
-  // If it fails to connect to DynamoDB it will panic, however if it can connect and does not find a table it will then create one.
-  // Should creating the table fail it will, again, panic.
+  /// Init tries to initiate a connection to DynamoDB.
+  /// It will look to see the `card-counter` table exists and if it doesn't find one, it will prompt the user if it wants to create a new table in DynamoDB.
+  /// It will error if it can't talk to DynamoDB or if it can't find the `card-counter` table and the user declines to create one.
   pub async fn init(config: &Config) -> Result<Self> {
     // Boiler plate create pertinent AWS info
     let region = Region::Custom {
@@ -255,36 +290,17 @@ impl Aws {
 
     Ok(__self)
   }
-  // TODO: This doesn't seem efficient
+
+  // Given a board, the user will be prompted to select an entry based on their timestamps. This can error based on generating prompts to a user.
   pub fn get_decks_by_date(&self, board: Entries) -> Result<Option<Vec<Deck>>> {
     let mut keys: Vec<u64> = board.iter().map(|entry| entry.time_stamp).collect();
 
     keys.sort();
-    let date = select_date(&keys).unwrap();
+    let date = select_date(&keys).chain_err(|| "Unable to select a date.")?;
 
     match board.iter().find(|entry| entry.time_stamp == date) {
       Some(entry) => Ok(Some(entry.decks.clone())),
       None => Ok(None),
     }
   }
-}
-
-// TODO: Get rid of
-fn select_date(keys: &[u64]) -> Option<u64> {
-  let items: Vec<NaiveDateTime> = keys
-    .iter()
-    .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
-    .collect();
-  let index: usize = Select::new()
-    .with_prompt("Select a date: ")
-    .items(&items)
-    .default(0)
-    .interact()
-    .unwrap();
-
-  Some(keys[index])
-}
-// Helper functions
-fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
-  serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
 }

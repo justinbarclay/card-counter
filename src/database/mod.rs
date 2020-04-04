@@ -31,6 +31,7 @@ impl Default for Entry {
   fn default() -> Self {
     Entry {
       board_id: "Default".to_string(),
+      // This name is hack around timestamp is a reserved keyword in some databases
       time_stamp: 0,
       decks: Vec::new(),
     }
@@ -40,7 +41,7 @@ impl Default for Entry {
 #[async_trait]
 pub trait Database {
   async fn add_entry(&self, entry: Entry) -> Result<()>;
-  async fn all_entries(&self) -> Result<Entries>;
+  async fn all_entries(&self) -> Result<Option<Entries>>;
   async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>>;
   async fn query_entries(
     &self,
