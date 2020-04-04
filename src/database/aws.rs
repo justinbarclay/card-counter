@@ -23,7 +23,7 @@ use rusoto_dynamodb::{
 use super::config::Config;
 use crate::score::Deck;
 use chrono::NaiveDateTime;
-use dialoguer::Select;
+use dialoguer::{Confirmation, Select};
 use serde_dynamodb;
 use std::{collections::HashMap, convert::TryInto};
 
@@ -32,7 +32,7 @@ async fn create_table(client: &DynamoDbClient) -> Result<()> {
     table_name: "card-counter".to_string(),
     attribute_definitions: [
       AttributeDefinition {
-        attribute_name: "board_name".to_string(),
+        attribute_name: "board_id".to_string(),
         attribute_type: "S".to_string(),
       },
       AttributeDefinition {
@@ -46,7 +46,7 @@ async fn create_table(client: &DynamoDbClient) -> Result<()> {
     local_secondary_indexes: None,
     key_schema: [
       KeySchemaElement {
-        attribute_name: "board_name".to_string(),
+        attribute_name: "board_id".to_string(),
         key_type: "HASH".to_string(),
       },
       KeySchemaElement {
@@ -78,39 +78,20 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
   match table_query {
     Ok(_) => Ok(true),
     // We need to break down the error from
-    Err(DescribeTableError) => match DescribeTableError {
-      ResourceNotFound => Ok(false),
-      err => Err(err).chain_err(|| "Son of a bitch"),
+    Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => {
+      return Ok(false)
     },
-    Err(err) => Err(err).chain_err(|| "Error talking to "),
+    Err(err) => Err(err).chain_err(|| "Unable to connect to DynamoDB.")
   }
 }
 
+#[derive(Clone)]
 pub struct Aws {
   client: DynamoDbClient,
 }
 
 #[async_trait]
 impl Database for Aws {
-  async fn init(config: Config) -> Result<Self> {
-    // Boiler plate create pertinent AWS info
-    let region = Region::Custom {
-      name: "us-east-1".into(),
-      endpoint: "http://localhost:8000".into(),
-    };
-    let __self: Aws = Aws {
-      client: DynamoDbClient::new(region),
-    };
-
-    // Maybe create table
-    match does_table_exist(&__self.client, "card-counter".to_string()).await {
-      Ok(true) => (),                                   // Noop
-      Ok(false) => create_table(&__self.client).await?, // Create table and pass up error on failure
-      Err(err) => return Err(err),                      // Return error
-    }
-    Ok(__self)
-  }
-
   async fn add_entry(&self, entry: Entry) -> Result<()> {
     self
       .client
@@ -190,9 +171,14 @@ impl Database for Aws {
   async fn query_entries(
     &self,
     board_name: String,
-    time_stamp: std::primitive::u64,
-  ) -> Result<Entries> {
+    time_stamp: Option<u64>,
+  ) -> Result<Option<Vec<Deck>>> {
     let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
+    let query_string = match time_stamp {
+      Some(_) => "board_name = :board_name and time_stamp < :timestamp".to_string(),
+      None => "board_name = :board_name".to_string()
+    };
+
     query_values.insert(
       ":board_name".to_string(),
       AttributeValue {
@@ -200,20 +186,23 @@ impl Database for Aws {
         ..Default::default()
       },
     );
-    query_values.insert(
-      ":timestamp".to_string(),
-      AttributeValue {
-        n: Some(time_stamp.to_string()),
-        ..Default::default()
-      },
-    );
+
+    if let Some(timestamp) = time_stamp{
+      query_values.insert(
+        ":timestamp".to_string(),
+        AttributeValue {
+          n: Some(timestamp.to_string()),
+          ..Default::default()
+        },
+      );
+    }
 
     let query = self
       .client
       .query(QueryInput {
         consistent_read: Some(true),
         key_condition_expression: Some(
-          "board_name = :board_name and time_stamp < :timestamp".to_string(),
+          query_string,
         ),
         expression_attribute_values: Some(query_values),
         table_name: "card-counter".to_string(),
@@ -228,25 +217,53 @@ impl Database for Aws {
       .map(to_entry)
       .filter_map(Result::ok)
       .collect();
-    Ok(entries)
+
+    self.get_decks_by_date(entries)
   }
 }
 
 impl Aws {
+
+  // Init tries to initiate a connection to DynamoDB.
+  // If it fails to connect to DynamoDB it will panic, however if it can connect and does not find a table it will then create one.
+  // Should creating the table fail it will, again, panic.
+  pub async fn init(config: &Config) -> Result<Self> {
+    // Boiler plate create pertinent AWS info
+    let region = Region::Custom {
+      name: "us-east-1".into(),
+      endpoint: "http://localhost:8000".into(),
+    };
+    let __self = Aws {
+      client: DynamoDbClient::new(region),
+    };
+
+    // Maybe create table
+    let table_exists = does_table_exist(&__self.client, "card-counter".to_string()).await?;
+
+    if !table_exists{
+      match Confirmation::new()
+        .with_text("Unable to find \"card-counter\" table in DynamoDB. Would you like to create a table?")
+        .interact().chain_err(|| "There was a problem registering your response.")?{
+          true => create_table(&__self.client).await?,
+          false => {
+            println!{"Unable to update or query table."}
+            ::std::process::exit(1);
+          }
+        }
+
+    }
+
+    Ok(__self)
+  }
   // TODO: This doesn't seem efficient
-  pub async fn get_decks_by_date(self, board_id: &str) -> Result<Option<Vec<Deck>>> {
-    let entries: Entries = self.all_entries().await?;
-    let mut board = entries
-      .iter()
-      .filter(|entry| entry.board_name == board_id)
-      .map(|entry| entry.clone());
-    let mut keys: Vec<u64> = board.clone().map(|entry| entry.time_stamp).collect();
+  pub fn get_decks_by_date(&self, board: Entries) -> Result<Option<Vec<Deck>>> {
+    let mut keys: Vec<u64> = board.iter().map(|entry| entry.time_stamp).collect();
 
     keys.sort();
     let date = select_date(&keys).unwrap();
 
-    match board.find(|entry| entry.time_stamp == date) {
-      Some(entry) => Ok(Some(entry.decks)),
+    match board.iter().find(|entry| entry.time_stamp == date) {
+      Some(entry) => Ok(Some(entry.decks.clone())),
       None => Ok(None),
     }
   }
@@ -271,65 +288,3 @@ fn select_date(keys: &[u64]) -> Option<u64> {
 fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
   serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
 }
-
-// pub async fn test_dynamo(thing: String) -> Result<()> {
-
-//   match client.list_tables(ListTablesInput::default()).await {
-//     Ok(output) => match output.table_names {
-//       Some(table_name_list) => {
-//         println!("Tables in database:");
-//         for table_name in table_name_list {
-//           println!("{}", table_name);
-//         }
-//       }
-//       None => println!("No tables in database!"),
-//     },
-//     Err(error) => {
-//       println!("Error: {:?}", error);
-//     }
-//   }
-
-//   // Add deck
-//   // Create demo data
-//   let deck_2 = Deck {
-//     estimated: 20,
-//     score: 20,
-//     unscored: 40,
-//     list_name: "Testing".to_string(),
-//     size: 60,
-//   };
-
-//   let board = Entry {
-//     board_name: "Test".to_string(),
-//     time_stamp: Entry::get_current_timestamp()?,
-//     decks: [deck_1].to_vec(),
-//   };
-//   let mut board_2 = board.clone();
-
-//   board_2.time_stamp = Entry::get_current_timestamp()?;
-//   board_2.decks.push(deck_2);
-
-//   std::thread::sleep(std::time::Duration::from_secs(1));
-//   let query_at = Entry::get_current_timestamp()?;
-//   std::thread::sleep(std::time::Duration::from_secs(1));
-
-//   add_entry(&client, &board).await?;
-
-//   add_entry(&client, &board_2).await?;
-
-//   // Get deck
-//   println!(
-//     "{:?}",
-//     get_entry(&client, &board.board_name, board.time_stamp).await?
-//   );
-
-//   //Get all decks
-//   let scan = get_all_entries(&client).await?;
-//   println!("{:?}", scan.len());
-
-//   // Get all decks in range
-//   let entries: Entries = get_all_after_date(&client, &board.board_name, board.time_stamp).await?;
-//   println!("{:?}", entries.len());
-//   // println!("{:?}", get_all_after_date(&client, &board.board_name, board.time_stamp).await?);
-//   Ok(())
-// }

@@ -61,16 +61,16 @@ fn auth_from_env() -> Option<Auth> {
   Some(Auth { key, token })
 }
 
-async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
+async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
   let filter: Option<&str> = matches.value_of("filter");
   // Parse arguments, if board_id isn't found
   let board: Board = match matches.value_of("board_id") {
-    Some(id) => get_board(id, auth).await?,
-    None => select_board(auth).await?,
+    Some(id) => get_board(id, &auth).await?,
+    None => select_board(&auth).await?,
   };
 
-  let cards = get_lists(auth, &board.id).await?;
-  let decks = build_decks(auth, cards).await?;
+  let cards = get_lists(&auth, &board.id).await?;
+  let decks = build_decks(&auth, cards).await?;
 
   if matches.is_present("detailed") {
     if let Some(old_decks) = get_decks_by_date(&board.id) {
@@ -86,21 +86,20 @@ async fn show_score(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(Boar
   Ok((board, decks))
 }
 
-async fn show_score_aws(auth: &Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
+async fn show_score_aws(auth: Auth, matches: &clap::ArgMatches<'_>, client: Box<dyn Database>) -> Result<(Board, Vec<Deck>)> {
   let filter: Option<&str> = matches.value_of("filter");
   // Parse arguments, if board_id isn't found
   let board: Board = match matches.value_of("board_id") {
-    Some(id) => get_board(id, auth).await?,
-    None => select_board(auth).await?,
+    Some(id) => get_board(id, &auth).await?,
+    None => select_board(&auth).await?,
   };
 
-  let cards = get_lists(auth, &board.id).await?;
-  let decks = build_decks(auth, cards).await?;
+  let cards = get_lists(&auth, &board.id).await?;
+  let decks = build_decks(&auth, cards).await?;
 
   if matches.is_present("detailed") {
-    if let Some(old_decks) = Aws::init(Config::from_file_or_default()?)
-      .await?
-      .get_decks_by_date(&board.id)
+    if let Some(old_decks) = client
+      .query_entries(board.id.to_string(), None)
       .await?
     {
       print_delta(&decks, &old_decks, &board.name, filter);
@@ -167,23 +166,28 @@ async fn run() -> Result<()> {
     Some(auth) => auth,
     None => std::process::exit(1),
   };
+  let database = Box::new(Aws::init(&config).await?);
 
-  let (board, decks) = show_score_aws(&auth, &matches).await?;
+  let (board, decks) = match matches.value_of("database"){
+    Some("local") => show_score(auth, &matches).await?,
+    Some("aws") =>  show_score_aws(auth.clone(), &matches, database.clone()).await?,
+    _ => panic!("Unable to find a matching database")
+  };
 
-  let database: Aws = Aws::init(config).await?;
-  database
-    .add_entry(Entry {
-      board_name: board.id,
-      time_stamp: Entry::get_current_timestamp()?,
-      decks,
-    })
-    .await?;
-
-  println!("{:?}", database.all_entries().await?);
-  // match matches.value_of("save") {
-  //   Some(true) => save_database(&board.id, &decks)?,
-  //   () => ()
-  // };
+  if matches.value_of("save").is_some() {
+    match matches.value_of("database"){
+      Some("local") => save_local_database(&board.id, &decks)?,
+      Some("aws") => { database
+                       .add_entry(Entry {
+                         board_name: board.id,
+                         time_stamp: Entry::get_current_timestamp()?,
+                         decks,
+                       })
+                       .await?;
+      },
+      _ => ()
+    };
+  }
   Ok(())
 }
 
