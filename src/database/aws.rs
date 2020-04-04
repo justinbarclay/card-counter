@@ -131,7 +131,7 @@ impl Database for Aws {
   async fn get_entry(
     &self,
     board_name: String,
-    time_stamp: std::primitive::u64,
+    time_stamp: u64,
   ) -> Result<Option<Entry>> {
     let mut query: HashMap<String, AttributeValue> = HashMap::new();
     query.insert(
