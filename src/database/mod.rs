@@ -10,7 +10,7 @@ pub mod file;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Entry {
-  pub board_name: String,
+  pub board_id: String,
   pub time_stamp: u64,
   pub decks: Vec<Deck>,
 }
@@ -30,7 +30,7 @@ impl Entry {
 impl Default for Entry {
   fn default() -> Self {
     Entry {
-      board_name: "Default".to_string(),
+      board_id: "Default".to_string(),
       time_stamp: 0,
       decks: Vec::new(),
     }

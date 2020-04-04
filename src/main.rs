@@ -181,7 +181,7 @@ async fn run() -> Result<()> {
       Some("aws") => {
         database
           .add_entry(Entry {
-            board_name: board.id,
+            board_id: board.id,
             time_stamp: Entry::get_current_timestamp()?,
             decks,
           })
