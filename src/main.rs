@@ -155,9 +155,9 @@ async fn run() -> Result<()> {
                 .about("Edit properties associated with card-counter"))
     .get_matches();
 
-  let config = Config::from_file_or_default()?;
+
   if matches.subcommand_matches("config").is_some() {
-    config.update_file()?;
+    Config::from_file_or_default()?.update_file()?;
     std::process::exit(0)
   }
 
@@ -170,7 +170,7 @@ async fn run() -> Result<()> {
 
   let (board, decks) = match matches.value_of("database") {
     Some("local") => show_score(auth, &matches).await?,
-    Some("aws") => show_score_aws(auth.clone(), &matches, Box::new(Aws::init(&config).await?)).await?,
+    Some("aws") => show_score_aws(auth.clone(), &matches, Box::new(Aws::init(&Config::from_file_or_default()?).await?)).await?,
     _ => panic!("Unable to find a matching database"),
   };
 
@@ -178,7 +178,7 @@ async fn run() -> Result<()> {
     match (save, matches.value_of("database")) {
       ("true", Some("local")) => save_local_database(&board.id, &decks)?,
       ("true", Some("aws")) => {
-        let database = Box::new(Aws::init(&config).await?);
+        let database = Box::new(Aws::init(&Config::from_file_or_default()?).await?);
         database
           .add_entry(Entry {
             board_id: board.id,

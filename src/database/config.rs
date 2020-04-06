@@ -107,6 +107,7 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
   })
 }
 
+#[allow(dead_code)]
 fn aws_details(aws: Option<AWS>) -> Result<AWS> {
   let _aws = aws.unwrap_or(Default::default());
   let access_key_id = Input::<String>::new()
