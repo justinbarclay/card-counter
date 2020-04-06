@@ -27,7 +27,7 @@ SUBCOMMANDS:
     help      Prints this message or the help of the given subcommand(s)
 #+END_EXAMPLE
 ** Run
-To run card-counter you absolutely, positively _must_ have a ~trello api key~ and ~trello api token~. Now, you have the option of storing them as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~.
+To run card-counter, you absolutely, positively _must_ have a ~trello api key~ and ~trello api token~. You now have the option of storing them as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~.
 For example:
 #+BEGIN_SRC bash
 export TRELLO_API_KEY=""
@@ -55,7 +55,7 @@ In order:
 *** DynamoDB Table
 When running ~card-counter~ with AWS as the preferred database system, if it can't find the table ~card-counter~ in DynamoDB (for your region), it will prompt you to create one for you.
 
-If however, you would like to manage the table for yourself, the terraform code below can help you set it up.
+If you would like to manage the table yourself, the terraform code below can help you set it up.
 #+NAME: DynamoDB config
 #+BEGIN_SRC terraform
 resource "aws_dynamodb_table" "basic-dynamodb-table" {
