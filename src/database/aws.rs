@@ -70,7 +70,7 @@ async fn create_table(client: &DynamoDbClient) -> Result<()> {
     tags: None,
   };
   match client.create_table(table_params).await {
-    Ok(ok) => println!("{:?}", ok),
+    Ok(_) => (),
     Err(err) => println!("{:?}", err),
   }
   Ok(())
@@ -85,10 +85,11 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
     Ok(_) => Ok(true),
     // We need to break down the error from
     Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => {
-      return Ok(false)
+      Ok(false)
     }
-    Err(err) => Err(err).chain_err(|| "Unable to connect to DynamoDB."),
-  }
+    Err(err) => {
+      Err(err)},
+  }.chain_err(|| "Unable to connect to DynamoDB.")
 }
 
 // TODO: Get rid of consolidate with function in file
