@@ -2,7 +2,7 @@
 A CLI for quickly counting cards remaining in trello lists
 
 #+BEGIN_EXAMPLE
-Card Counter 0.5.0
+Card Counter 0.5.0-beta
 Justin Barclay <justincbarclay@gmail.com>
 A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.
 
