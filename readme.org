@@ -27,12 +27,20 @@ SUBCOMMANDS:
     help      Prints this message or the help of the given subcommand(s)
 #+END_SRC
 ** Run
-To run card-counter it expects to have your ~trello api key~ and ~trello api token~ stored as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~. For further documentation on how to get an api key and token from trello, read the documentation at https://developers.trello.com/page/authorization.
+To run card-counter you absolutely, positively _must_ have a ~trello api key~ and ~trello api token~. Now, you have the option of storing them as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~.
+For example:
 #+BEGIN_SRC bash
 export TRELLO_API_KEY=""
 export TRELLO_API_TOKEN=""
 card-counter -b ID -f FILTER
 #+END_SRC
+
+Or you can also set these by calling:
+#+BEGIN_SRC bash
+card-counter config
+#+END_SRC
+
+If you're curious what is set or stored there, card-counter stores all of it's local state in the ~\~/.card-counter~ folder.
 ** AWS
 As of Version 0.5.0 Card-Counter supports syncing you stats to a DynamoDB. Now, it's doesn't only have to be your responsibility to track your progress for your sprint!
 
