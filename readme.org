@@ -1,8 +1,8 @@
 * README
 A CLI for quickly counting cards remaining in trello lists
 
-#+BEGIN_SRC bash
-Card Counter 0.4.1
+#+BEGIN_EXAMPLE
+Card Counter 0.5.0
 Justin Barclay <justincbarclay@gmail.com>
 A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.
 
@@ -19,13 +19,13 @@ OPTIONS:
     -b, --board-id <ID>          The ID of the board where the cards are meant to be counted from.
     -D, --database <DATABASE>    Choose the database you want to save current request in. [default: local]  [possible
                                  values: local, aws]
-    -f, --filter <FILTER>        Removes all list with a name that contains the substring FILTER
-    -s, --save <SAVE>            Save the current request in the database. Defaults to true. [default: true]
+    -f, --filter <FILTER>        Filters out all lists with a name that contains the substring FILTER
+    -s, --save <SAVE>            Save the current entry in the database. [default: true]
 
 SUBCOMMANDS:
     config    Edit properties associated with card-counter
     help      Prints this message or the help of the given subcommand(s)
-#+END_SRC
+#+END_EXAMPLE
 ** Run
 To run card-counter you absolutely, positively _must_ have a ~trello api key~ and ~trello api token~. Now, you have the option of storing them as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~.
 For example:
@@ -42,7 +42,7 @@ card-counter config
 
 If you're curious what is set or stored there, card-counter stores all of it's local state in the ~\~/.card-counter~ folder.
 ** AWS
-As of Version 0.5.0 Card-Counter supports syncing you stats to a DynamoDB. Now, it's doesn't only have to be your responsibility to track your progress for your sprint!
+Support for syncing your or your team's stats to a DynamoDB was added in version 0.5.0. Finally, it's not just your responsibility to track your teams sprint progress!
 
 *** Authentication
 ~card-counter~ will check several locations for your AWS credentials and Region. 
@@ -53,10 +53,10 @@ In order:
 4. IAM EC2 Instance Profile
 
 *** DynamoDB Table
-If you run ~card-counter~ with the option ~--database aws~, for example ~card-counter -f NoBurn --database aws~, it will check to see if a table with the name "card-counter" exists. If it can not find such a table it will ask you if you would like it to create one for you.
+When running ~card-counter~ with AWS as the preferred database system, if it can't find the table ~card-counter~ in DynamoDB (for your region), it will prompt you to create one for you.
 
-If however, you would like to manage the table for yourself, you could use the following terraform to create the table for you:
-#+NAME DynamoDB config
+If however, you would like to manage the table for yourself, the terraform code below can help you set it up.
+#+NAME: DynamoDB config
 #+BEGIN_SRC terraform
 resource "aws_dynamodb_table" "basic-dynamodb-table" {
   name           = "card-counter"

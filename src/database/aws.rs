@@ -15,7 +15,6 @@ use rusoto_dynamodb::{
   DynamoDbClient,
   GetItemInput,
   KeySchemaElement,
-  ListTablesInput,
   ProvisionedThroughput,
   PutItemInput,
   QueryInput,
