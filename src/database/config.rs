@@ -35,7 +35,7 @@ impl Default for Trello {
 struct AWS {
   secret_access_key: String,
   access_key_id: String,
-  region: String
+  region: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -127,7 +127,7 @@ fn aws_details(aws: Option<AWS>) -> Result<AWS> {
   Ok(AWS {
     access_key_id,
     secret_access_key,
-    region
+    region,
   })
 }
 
@@ -177,7 +177,6 @@ impl Config {
   }
 
   pub fn persist(self) -> Result<()> {
-
     let config = config_file().chain_err(|| "Unable to open config file")?;
     config.set_len(0)?;
     let mut writer = BufWriter::new(config);
