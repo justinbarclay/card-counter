@@ -294,8 +294,13 @@ impl Aws {
     let mut keys: Vec<u64> = board.iter().map(|entry| entry.time_stamp).collect();
 
     keys.sort();
-    let date = select_date(&keys).chain_err(|| "Unable to select a date.")?;
+    let date;
 
+    if keys.len() > 0{
+      date = select_date(&keys).chain_err(|| "Unable to select a date.")?;
+    } else {
+      return Ok(None)
+    }
     match board.iter().find(|entry| entry.time_stamp == date) {
       Some(entry) => Ok(Some(entry.decks.clone())),
       None => Ok(None),
