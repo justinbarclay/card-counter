@@ -93,7 +93,7 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
   }
 }
 
-// TODO: Get rid of
+// TODO: Get rid of consolidate with function in file
 fn select_date(keys: &[u64]) -> Option<u64> {
   let items: Vec<NaiveDateTime> = keys
     .iter()
@@ -108,7 +108,7 @@ fn select_date(keys: &[u64]) -> Option<u64> {
 
   Some(keys[index])
 }
-// Helper functions
+
 fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
   serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
 }
@@ -261,16 +261,14 @@ impl Aws {
   /// It will error if it can't talk to DynamoDB or if it can't find the `card-counter` table and the user declines to create one.
   pub async fn init(config: &Config) -> Result<Self> {
     // Boiler plate create pertinent AWS info
-    let region = Region::Custom {
-      name: "us-east-1".into(),
-      endpoint: "http://localhost:8000".into(),
-    };
-    let __self = Aws {
+
+    let region = Region::default();
+
+    let aws = Aws {
       client: DynamoDbClient::new(region),
     };
-
     // Maybe create table
-    let table_exists = does_table_exist(&__self.client, "card-counter".to_string()).await?;
+    let table_exists = does_table_exist(&aws.client, "card-counter".to_string()).await?;
 
     if !table_exists {
       match Confirmation::new()
@@ -280,7 +278,7 @@ impl Aws {
         .interact()
         .chain_err(|| "There was a problem registering your response.")?
       {
-        true => create_table(&__self.client).await?,
+        true => create_table(&aws.client).await?,
         false => {
           println! {"Unable to update or query table."}
           ::std::process::exit(1);
@@ -288,7 +286,7 @@ impl Aws {
       }
     }
 
-    Ok(__self)
+    Ok(aws)
   }
 
   // Given a board, the user will be prompted to select an entry based on their timestamps. This can error based on generating prompts to a user.

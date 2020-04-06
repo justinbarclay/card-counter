@@ -35,6 +35,7 @@ impl Default for Trello {
 struct AWS {
   secret_access_key: String,
   access_key_id: String,
+  region: String
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -46,8 +47,8 @@ enum Preference {
 impl fmt::Display for Preference {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Preference::Local => write!(f, "Local"),
-      Preference::Aws => write!(f, "Aws"),
+      Preference::Local => write!(f, "local"),
+      Preference::Aws => write!(f, "aws"),
     }
   }
 }
@@ -106,20 +107,27 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
   })
 }
 
-fn aws_details(aws: &AWS) -> Result<AWS> {
+fn aws_details(aws: Option<AWS>) -> Result<AWS> {
+  let _aws = aws.unwrap_or(Default::default());
   let access_key_id = Input::<String>::new()
     .with_prompt("Access Key ID")
-    .default(aws.access_key_id.clone())
+    .default(_aws.access_key_id.clone())
     .interact()?;
 
   let secret_access_key = Input::<String>::new()
     .with_prompt("Secret Access Key")
-    .default(aws.secret_access_key.clone())
+    .default(_aws.secret_access_key.clone())
+    .interact()?;
+
+  let region = Input::<String>::new()
+    .with_prompt("Region")
+    .default(_aws.region.clone())
     .interact()?;
 
   Ok(AWS {
     access_key_id,
     secret_access_key,
+    region
   })
 }
 
@@ -164,11 +172,15 @@ impl Config {
     let trello = trello_details(&self.trello)?;
     self.trello = trello;
     self.database = database_preference()?;
+    self.aws = Some(aws_details(self.aws)?);
     Ok(self)
   }
 
   pub fn persist(self) -> Result<()> {
-    let mut writer = BufWriter::new(config_file().chain_err(|| "Unable to open config file")?);
+
+    let config = config_file().chain_err(|| "Unable to open config file")?;
+    config.set_len(0)?;
+    let mut writer = BufWriter::new(config);
 
     let json = serde_yaml::to_string(&self).chain_err(|| "Unable to parse config")?;
 

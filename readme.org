@@ -37,7 +37,7 @@ card-counter -b ID -f FILTER
 As of Version 0.5.0 Card-Counter supports syncing you stats to a DynamoDB. Now, it's doesn't only have to be your responsibility to track your progress for your sprint!
 
 *** Authentication
-~card-counter~ will check several locations for your AWS credentials. 
+~card-counter~ will check several locations for your AWS credentials and Region. 
 In order:
 1. Environment Variables
 2. Credential Files
