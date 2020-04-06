@@ -172,7 +172,7 @@ impl Config {
     let trello = trello_details(&self.trello)?;
     self.trello = trello;
     self.database = database_preference()?;
-    self.aws = Some(aws_details(self.aws)?);
+    // self.aws = Some(aws_details(self.aws)?);
     Ok(self)
   }
 
