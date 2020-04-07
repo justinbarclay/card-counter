@@ -1,16 +1,16 @@
 * README
-A CLI for quickly counting cards remaining in trello lists
+A CLI for quickly counting points in Trello lists
 
 #+BEGIN_EXAMPLE
 Card Counter 0.5.0-beta
 Justin Barclay <justincbarclay@gmail.com>
-A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.
+A CLI to summarize the score in your Trello lists.
 
 USAGE:
     card-counter [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -d, --detailed    Prints detailed stats for your trello lists, including the change in cards and scores from a
+    -d, --detailed    Prints detailed stats for your Trello lists, including the change in cards and scores from a
                       previous run.
     -h, --help        Prints help information
     -V, --version     Prints version information
@@ -29,21 +29,21 @@ SUBCOMMANDS:
 ** Getting Started for Getting Started
 Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][signing up]] first. Then, after you sign-up use it, breathe it, live it. Then after you've sufficiently lived in Trello and decide you want to start tracking the progress you make while sprinting. No. Not that type of sprinting, I mean [[https://www.atlassian.com/agile/scrum/sprints][sprinting]].
 
-Ok, so you've got an Trello account, and you've created a board. Boards? And within those board(s) you've created stacks of lists of cards. And within each card you've started pointing them. You have started pointing them, haven't you? Ok, [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][point]] some cards and then come back here.
+Ok, so you've got a Trello account, and you've created a board, boards? And within those board(s) you've created stacks of lists of cards. And within each card, you've started pointing them. You have started pointing them, haven't you? Ok, [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][point]] some cards and then come back here.
 
 Ok, so you've got the theory. You're an official agile scrum master. 
 [[./images/certificate_of_mastery.png]]
 
 Now, let's figure out how to run this.
 ** Getting Started
-Ok! Now you can begin thinking about getting started with ~card-counter~. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Along side the ~api key~, we also need to generate a ~trello api token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]], authorize ~card-counter~ to read the details from your board and copy the token that they give you.
+Ok! Now you can begin thinking about getting started with ~card-counter~. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Alongside the ~api key~, we also need to generate a ~trello API token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]], authorize ~card-counter~ to read the details from your board and copy the token that they give you.
 
 Now that we have collected the ~api key~ and ~api token~, we need to tell ~card-counter~ about them. 
 
 You can do that by setting them as environment variables:
 #+BEGIN_SRC bash
-export TRELLO_API_KEY=<your api key>
-export TRELLO_API_TOKEN=<your api token>
+export TRELLO_API_KEY=<your API key>
+export TRELLO_API_TOKEN=<your API token>
 #+END_SRC
 
 Or you set them in the config file!
@@ -51,18 +51,18 @@ Or you set them in the config file!
 card-counter config
 #+END_SRC
 
-There, we're done thinking about getting started. ~card-counter~ know enough about you to start talking to the Trello api! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
+There, we're done thinking about getting started. ~card-counter~ know enough about you to start talking to the Trello API! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
 ** Examples
-When I first run ~card-counter~ on a new machine. I run the config command, this allows me set things like my trello access information and my preferred database.
+When I first run ~card-counter~ on a new machine. I run the config command, this allows me to set things like my Trello access information and my preferred database.
 #+BEGIN_SRC bash
 card-counter config
 #+END_SRC
 
-After that I'll usually run
+After that, I'll usually run
 #+BEGIN_SRC bash
 card-counter 
 #+END_SRC
-This will bring up a list of board you have access to and allow you to choose what board you want to run the command on.
+This will bring up a list of boards you have access to and allow you to choose what board you want to run the command on.
 
 If I know I'm going be running card-counter on the same board all the time I might use the --board, -b, option and use the board-id. You can find the board-id in the URL for your board.
 
@@ -79,9 +79,9 @@ Finally, if I have a board that is a little noisy, I can filter out lists that I
 card-counter --board-if wtPNQDEV --filter ignore 
 #+END_SRC
 
-** Advanced
+** Remote Storage
 *** Aws
-Support for syncing your or your team's stats to a DynamoDB was added in version 0.5.0. Finally, it's not just your responsibility to track your teams sprint progress!
+Support for syncing your or your team's stats to a DynamoDB was added in version 0.5.0. Finally, it's not just your responsibility to track your team's sprint progress!
 
 **** Authentication
 ~card-counter~ will check several locations for your AWS credentials and Region. 
@@ -125,7 +125,7 @@ resource "aws_dynamodb_table" "basic-dynamodb-table" {
 ** Build from source
 Don't trust the binaries I provide you? If you follow the stranger danger philosophy, I can't blame you. But I do have a solution, you can easily* build this from source.
 
-\* Easy if you all ready have rust and cargo installed
+\* Easy if you already have rust and cargo installed
 #+BEGIN_SRC bash
 git clone https://github.com/justinbarclay/card-counter.git
 cd card-counter
