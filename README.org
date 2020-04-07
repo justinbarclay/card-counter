@@ -1,0 +1,156 @@
+#+OPTIONS: toc:nil
+* card-counter
+A CLI for quickly summarizing story points in Trello lists.
+
+#+BEGIN_EXAMPLE
+Card Counter 0.5.0-beta3
+Justin Barclay <justincbarclay@gmail.com>
+A CLI for quickly summarizing story points in Trello lists
+
+USAGE:
+    card-counter [FLAGS] [OPTIONS] [SUBCOMMAND]
+
+FLAGS:
+    -c, --compare    Compares the current Trello board with a previous entry
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+OPTIONS:
+    -b, --board-id <ID>          The ID of the board where the cards are meant to be counted from
+    -d, --database <DATABASE>    Choose the database you want to save current request in [default: local]  [possible
+                                 values: local, aws]
+    -f, --filter <FILTER>        Filters out all lists with a name that contains the substring FILTER
+    -s, --save <SAVE>            Save the current entry in the database [default: true]
+
+SUBCOMMANDS:
+    config    Edit properties associated with card-counter
+    help      Prints this message or the help of the given subcommand(s)
+#+END_EXAMPLE
+** Getting Started for Getting Started
+Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][getting one]]. Now that you've signed-up, _I_ am personally asking you to use it for a while. But not just use it, breathe it, live it, feel it deep down between your toes. Once your entire being is permeated with Trello, you are ready to start tracking the progress you make in [[https://www.atlassian.com/agile/scrum/sprints][sprints]].
+
+Finally, you've got a Trello account and you've created some boards. Within those boards, you've created stacks of lists of cards. And within each card, you've scoped out the work and gave it a [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][score]].
+
+Great! You've got the theory down. I decree that you are an official agile scrum master. I even made a certificate for you.
+[[./images/certificate_of_mastery.png]]
+
+Finally, finally, we're ready to get started.
+** Getting Started
+You can begin thinking about getting started with ~card-counter~ now. Before you can begin thinking about ~card-counter~, however, you will need to take some steps to retrieve and save information from Trello:
+
+1. Get your [[https://trello.com/app-key][API key]]
+2. Generate a Trello API token by going to https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>
+3. Save these:
+   + As an environment variable:
+     #+BEGIN_SRC bash
+  export TRELLO_API_KEY=<your API key>
+  export TRELLO_API_TOKEN=<your API token>
+  #+END_SRC
+   + Or in the config file:
+     #+BEGIN_SRC bash
+  card-counter config
+  #+END_SRC
+
+There! We're done thinking about getting started. ~card-counter~ now knows enough about you to start talking to the Trello API. 
+
+If you're curious about what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~.
+
+If you have privacy concerns about what ~card-counter~ is doing with your information, don't worry about it. ~card-counter~ pulls down your information from the Trello API, processes it, and stores it all locally on your machine.
+
+** Examples
+When you first run ~card-counter~ on a new machine, you could run the config command. This allows ~card-counter~ to capture important pieces of information. Like how to access your Trello data and your preferred database.
+#+BEGIN_SRC bash
+card-counter config
+#+END_SRC
+
+After that, you could run the command itself.
+#+BEGIN_SRC bash
+card-counter 
+#+END_SRC
+This will bring up a list of boards you have access to and get you to choose what board you want to run the command on.
+
+If you know that you are going be running ~card-counter~ on the same board all the time, you might use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
+
+A typical Trello board URL looks like:
+https://trello.com/b/<board-id>/<your-board>
+
+For example: if you want to use the Trello board-id for ~card-counter~, https://trello.com/b/wtPNQDEV/card-counter, you would use "wtPNQDEV" as the board-id.
+#+BEGIN_SRC bash
+card-counter --board-id wtPNQDEV 
+#+END_SRC
+
+If you have a board that is a little noisy, you can filter out lists that you don't want to track. You can do this by using the ~-f~ (~--filter~) option. If you add a substring to the list(s), such as [ignore], ~card-counter~ can filter out these lists for you. Be careful however, the filter option is case sensitive.
+#+BEGIN_SRC bash
+card-counter --board-if wtPNQDEV --filter ignore 
+#+END_SRC
+
+** "Advanced"
+Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's ~card-counter~ cloud edition! Where we allow you to store your data in DynamoDB.
+*** AWS DynamoDB
+To start with you'll need to ask your administrator to give you read/write access to DynamoDB. This process can take anywhere from 3 weeks to 4 months.
+
+**** Authentication
+Did you return with the correct AWS permissions? That's great! I'm assuming in the interceding 3 months that you've become familiar with the AWS CLI. If so, this suggests your credentials are set somewhere. You probably don't need to do anything. If you've rushed into this, and it is your first time using AWS, you can start reading [[https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html][Amazon's documentation]] to find out what you need to set.
+
+~card-counter~ will check several locations for your AWS credentials and Region.
+
+In order, the locations are:
+1. Environment Variables
+2. Credential Files
+3. IAM ECS Container Profile
+4. IAM EC2 Instance Profile
+
+**** Configuring
+You can tell ~card-counter~ you want to use AWS as your database (instead of the local database) in two ways:
+
+1. As an option through the CLI
+  #+BEGIN_SRC bash
+  card-counter --database aws
+  #+END_SRC
+2. Select the ~aws~ option in your config file
+  #+BEGIN_SRC bash
+  card-counter config
+  #+END_SRC
+
+**** DynamoDB Table
+For those of you who want to avoid doing as much work as possible, ~card-counter~ can create the necessary table in DynamoDB for you. When you run ~card-counter~ for the first time, with AWS as your database, it will ask for permission to create the "card-counter" table.
+
+If you're a control freak (or worse yet, if you like config files everywhere), you can manage the database yourself. I've provided the ~terraform~ below to help you create the "card-counter" table.
+#+NAME: DynamoDB config
+#+BEGIN_SRC terraform
+resource "aws_dynamodb_table" "card-counter-table" {
+  name           = "card-counter"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "board_id"
+  range_key      = "time_stamp"
+
+  attribute {
+    name = "board_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "time_stamp"
+    type = "N"
+  }
+
+  tags = {
+    Name        = "dynamodb-table-1"
+    Environment = "production"
+  }
+}
+#+END_SRC
+ 
+** Build from source
+Don't trust the binaries I provided? I have an easy solution for you. Build it from source. (Easy if you already have rust and cargo installed)
+
+#+BEGIN_SRC bash
+git clone https://github.com/justinbarclay/card-counter.git
+cd card-counter
+cargo install --path .
+#+END_SRC
+
+_Fin_, finally.
+
