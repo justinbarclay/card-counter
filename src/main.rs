@@ -72,7 +72,7 @@ async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board
   let cards = get_lists(&auth, &board.id).await?;
   let decks = build_decks(&auth, cards).await?;
 
-  if matches.is_present("detailed") {
+  if matches.is_present("compare") {
     if let Some(old_decks) = get_decks_by_date(&board.id) {
       print_delta(&decks, &old_decks, &board.name, filter);
     } else {
@@ -101,7 +101,7 @@ async fn show_score_aws(
   let cards = get_lists(&auth, &board.id).await?;
   let decks = build_decks(&auth, cards).await?;
 
-  if matches.is_present("detailed") {
+  if matches.is_present("compare") {
     if let Some(old_decks) = client.query_entries(board.id.to_string(), None).await? {
       print_delta(&decks, &old_decks, &board.name, filter);
     } else {
@@ -147,10 +147,10 @@ async fn run() -> Result<()> {
          .default_value("local")
         .help("Choose the database you want to save current request in.")
          .possible_values(&["local", "aws"]))
-    .arg(Arg::with_name("detailed")
-         .short("d")
-         .long("detailed")
-         .help("Prints detailed stats for your trello lists, including the change in cards and scores from a previous run."))
+    .arg(Arg::with_name("compare")
+         .short("c")
+         .long("compare")
+         .help("Compares the current trello board with a previous entry."))
     .subcommand(clap::SubCommand::with_name("config")
                 .about("Edit properties associated with card-counter"))
     .get_matches();
