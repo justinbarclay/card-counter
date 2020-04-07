@@ -26,25 +26,64 @@ SUBCOMMANDS:
     config    Edit properties associated with card-counter
     help      Prints this message or the help of the given subcommand(s)
 #+END_EXAMPLE
-** Run
-To run card-counter, you absolutely, positively _must_ have a ~trello api key~ and ~trello api token~. You now have the option of storing them as ~env vars~ ~TRELLO_API_KEY~ and ~TRELLO_API_TOKEN~.
-For example:
+** Getting Started for Getting Started
+Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][signing up]] first. Then, after you sign-up use it, breathe it, live it. Then after you've sufficiently lived in Trello and decide you want to start tracking the progress you make while sprinting. No. Not that type of sprinting, I mean [[https://www.atlassian.com/agile/scrum/sprints][sprinting]].
+
+Ok, so you've got an Trello account, and you've created a board. Boards? And within those board(s) you've created stacks of lists of cards. And within each card you've started pointing them. You have started pointing them, haven't you? Ok, [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][point]] some cards and then come back here.
+
+Ok, so you've got the theory. You're an official agile scrum master. 
+[[./images/certificate_of_mastery.png]]
+
+Now, let's figure out how to run this.
+** Getting Started
+Ok! Now you can begin thinking about getting started with ~card-counter~. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Along side the ~api key~, we also need to generate a ~trello api token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]], authorize ~card-counter~ to read the details from your board and copy the token that they give you.
+
+Now that we have collected the ~api key~ and ~api token~, we need to tell ~card-counter~ about them. 
+
+You can do that by setting them as environment variables:
 #+BEGIN_SRC bash
-export TRELLO_API_KEY=""
-export TRELLO_API_TOKEN=""
-card-counter -b ID -f FILTER
+export TRELLO_API_KEY=<your api key>
+export TRELLO_API_TOKEN=<your api token>
 #+END_SRC
 
-Or you can also set these by calling:
+Or you set them in the config file!
 #+BEGIN_SRC bash
 card-counter config
 #+END_SRC
 
-If you're curious what is set or stored there, card-counter stores all of it's local state in the ~\~/.card-counter~ folder.
-** AWS
+There, we're done thinking about getting started. ~card-counter~ know enough about you to start talking to the Trello api! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
+** Examples
+When I first run ~card-counter~ on a new machine. I run the config command, this allows me set things like my trello access information and my preferred database.
+#+BEGIN_SRC bash
+card-counter config
+#+END_SRC
+
+After that I'll usually run
+#+BEGIN_SRC bash
+card-counter 
+#+END_SRC
+This will bring up a list of board you have access to and allow you to choose what board you want to run the command on.
+
+If I know I'm going be running card-counter on the same board all the time I might use the --board, -b, option and use the board-id. You can find the board-id in the URL for your board.
+
+A typical Trello board URL looks like:
+[[https://trello.com/b/<board-id>/<your-board>]]
+
+For example: if I want to use the Trello board-id for my ~card-counter~, https://trello.com/b/wtPNQDEV/card-counter, I would use "wtPNQDEV" as the board-id.
+#+BEGIN_SRC bash
+card-counter --board-id wtPNQDEV 
+#+END_SRC
+
+Finally, if I have a board that is a little noisy, I can filter out lists that I don't want to track or see information about. I can do this by using the filter flag. If I add a substring to the list(s), such as [ignore], ~card-counter~ can filter out these lists for you. Be careful however, the filter function is case sensitive.
+#+BEGIN_SRC bash
+card-counter --board-if wtPNQDEV --filter ignore 
+#+END_SRC
+
+** Advanced
+*** Aws
 Support for syncing your or your team's stats to a DynamoDB was added in version 0.5.0. Finally, it's not just your responsibility to track your teams sprint progress!
 
-*** Authentication
+**** Authentication
 ~card-counter~ will check several locations for your AWS credentials and Region. 
 In order:
 1. Environment Variables
@@ -52,7 +91,7 @@ In order:
 3. IAM ECS Container Profile
 4. IAM EC2 Instance Profile
 
-*** DynamoDB Table
+**** DynamoDB Table
 When running ~card-counter~ with AWS as the preferred database system, if it can't find the table ~card-counter~ in DynamoDB (for your region), it will prompt you to create one for you.
 
 If you would like to manage the table yourself, the terraform code below can help you set it up.
@@ -83,8 +122,14 @@ resource "aws_dynamodb_table" "basic-dynamodb-table" {
 }
 #+END_SRC
  
-** Build
+** Build from source
+Don't trust the binaries I provide you? If you follow the stranger danger philosophy, I can't blame you. But I do have a solution, you can easily* build this from source.
+
+\* Easy if you all ready have rust and cargo installed
 #+BEGIN_SRC bash
-cargo build --release
-./target/release/card-counter -b ID -f FILTER
+git clone https://github.com/justinbarclay/card-counter.git
+cd card-counter
+cargo install --path .
 #+END_SRC
+
+And you're now able to run  ~card-counter~ from source! Well, as long as ~$HOME/.cargo/bin~ can be found on your path.
