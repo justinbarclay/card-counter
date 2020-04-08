@@ -1,8 +1,8 @@
 * README
-A CLI for quickly counting points in Trello lists
+A CLI for quickly summarizing story points in Trello lists
 
 #+BEGIN_EXAMPLE
-Card Counter 0.5.0-beta
+Card Counter 0.5.0-beta2
 Justin Barclay <justincbarclay@gmail.com>
 A CLI to summarize the score in your Trello lists.
 
@@ -27,18 +27,18 @@ SUBCOMMANDS:
     help      Prints this message or the help of the given subcommand(s)
 #+END_EXAMPLE
 ** Getting Started for Getting Started
-Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][signing up]] first. Then, after you sign-up use it, breathe it, live it. Then after you've sufficiently lived in Trello and decide you want to start tracking the progress you make while sprinting. No. Not that type of sprinting, I mean [[https://www.atlassian.com/agile/scrum/sprints][sprinting]].
+Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][getting one]]. After you sign-up to Trello _I_ personally am asking you to use it for awhile. Use it, breathe it, live it, feel it deep down between your toes. Now that you have sufficient you've experience with Trello, you should decide if you want to start tracking the progress you make while sprinting. No, not that type of sprinting, I mean [[https://www.atlassian.com/agile/scrum/sprints][sprinting]].
 
-Ok, so you've got a Trello account, and you've created a board, boards? And within those board(s) you've created stacks of lists of cards. And within each card, you've started pointing them. You have started pointing them, haven't you? Ok, [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][point]] some cards and then come back here.
+Finally, you've got a Trello account and you've created some boards. Within those board you've created stacks of lists of cards. And within each card, you've started pointing them. You have started pointing them, haven't you? Ok, [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][point]] some cards and then come back here.
 
-Ok, so you've got the theory. You're an official agile scrum master. 
+Ok, so you've got the theory down. I decree that you are an official agile scrum master. I even made a certificate for you.
 [[./images/certificate_of_mastery.png]]
 
-Now, let's figure out how to run this.
+Finally, Finally, let's figure out how to use card-counter.
 ** Getting Started
-Ok! Now you can begin thinking about getting started with ~card-counter~. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Alongside the ~api key~, we also need to generate a ~trello API token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]], authorize ~card-counter~ to read the details from your board and copy the token that they give you.
+Now you can begin thinking about getting started with ~card-counter~. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Alongside the ~API key~ we also need to generate a ~Trello API token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]] and give ~card-counter~ permission to read the details from your board and copy the token that they give you. But don't worry all the information ~card-counter~ pulls down from the API is processed and stored locally on your machine.
 
-Now that we have collected the ~api key~ and ~api token~, we need to tell ~card-counter~ about them. 
+Now that we have collected the ~API key~ and ~API token~, we need to tell ~card-counter~ about them. 
 
 You can do that by setting them as environment variables:
 #+BEGIN_SRC bash
@@ -46,12 +46,12 @@ export TRELLO_API_KEY=<your API key>
 export TRELLO_API_TOKEN=<your API token>
 #+END_SRC
 
-Or you set them in the config file!
+Or you set them in the config file.
+There, we're done thinking about getting started. ~card-counter~ now knows enough about you to start talking to the Trello API! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
+
 #+BEGIN_SRC bash
 card-counter config
 #+END_SRC
-
-There, we're done thinking about getting started. ~card-counter~ know enough about you to start talking to the Trello API! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
 ** Examples
 When I first run ~card-counter~ on a new machine. I run the config command, this allows me to set things like my Trello access information and my preferred database.
 #+BEGIN_SRC bash
@@ -67,7 +67,7 @@ This will bring up a list of boards you have access to and allow you to choose w
 If I know I'm going be running card-counter on the same board all the time I might use the --board, -b, option and use the board-id. You can find the board-id in the URL for your board.
 
 A typical Trello board URL looks like:
-[[https://trello.com/b/<board-id>/<your-board>]]
+https://trello.com/b/<board-id>/<your-board>
 
 For example: if I want to use the Trello board-id for my ~card-counter~, https://trello.com/b/wtPNQDEV/card-counter, I would use "wtPNQDEV" as the board-id.
 #+BEGIN_SRC bash

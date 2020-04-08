@@ -120,7 +120,7 @@ async fn run() -> Result<()> {
   let matches = App::new("Card Counter")
     .version(env!("CARGO_PKG_VERSION"))
     .author("Justin Barclay <justincbarclay@gmail.com>")
-    .about("A CLI to get a quick glance of your overall status in trello by counting remaining cards in each list of a board.")
+    .about("A CLI for quickly summarizing story points in Trello lists")
     .arg(Arg::with_name("board_id")
          .short("b")
          .long("board-id")
