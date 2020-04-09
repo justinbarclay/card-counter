@@ -94,9 +94,14 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
 
 // TODO: Get rid of consolidate with function in file
 fn select_date(keys: &[u64]) -> Option<u64> {
-  let items: Vec<NaiveDateTime> = keys
+  let items: Vec<String> = keys
     .iter()
-    .map(|item| NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0))
+    .map(|item| NaiveDateTime::from_timestamp(item.clone()
+                                              .try_into()
+                                              .unwrap(),
+                                              0)
+         .format("%b %d, %R UTC")
+         .to_string())
     .collect();
   let index: usize = Select::new()
     .with_prompt("Select a date: ")
