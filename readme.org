@@ -33,12 +33,12 @@ Finally, you've got a Trello account and you've created some boards. Within thos
 Great! You've got the theory down. I decree that you are an official agile scrum master. I even made a certificate for you.
 [[./images/certificate_of_mastery.png]]
 
-Finally, Finally, let's figure out how to use card-counter.
+Finally, finally, let's figure out how to use card-counter.
 
 ** Getting Started
-You can begin thinking about getting started with ~card-counter~ now. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Save this key somewhere we'll need it later. After you have the ~API key~ we also need to generate a ~Trello API token~. To generate the token you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]] and give ~card-counter~ permission to read the details from your board. Don't worry all the information ~card-counter~ pulls down from the API is processed and stored locally on your machine. Copy that token, we'll be using it next.
+You can begin thinking about getting started with ~card-counter~ now. But before you actually can begin thinking about ~card-counter~, you'll need to get your developer [[https://trello.com/app-key][API key]] from Trello. Save this key somewhere. We'll need it later. After you have the ~API key~, we also need to generate a ~Trello API token~. To generate the token, you'll need to go to [[https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>]] and give ~card-counter~ permission to read the details from your board. Don't worry all the information ~card-counter~ pulls down from the API is processed and stored locally on your machine. Copy that token, we'll be using it next.
 
-Perfect! We have collected the ~API key~ and ~API token~, we just need to tell ~card-counter~ about them. 
+Perfect! We have collected the ~API key~ and ~API token~. We just need to tell ~card-counter~ about them. 
 
 You can do that by setting them as environment variables:
 #+BEGIN_SRC bash
@@ -46,15 +46,15 @@ export TRELLO_API_KEY=<your API key>
 export TRELLO_API_TOKEN=<your API token>
 #+END_SRC
 
-Or you set them in the config file.
+Or you set them in the config file:
 #+BEGIN_SRC bash
 card-counter config
 #+END_SRC
 
-There, we're done thinking about getting started. ~card-counter~ now knows enough about you to start talking to the Trello API! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
+There! We're done thinking about getting started. ~card-counter~ now knows enough about you to start talking to the Trello API! If you're curious what information ~card-counter~ stores, you can find the config file and local database in ~$HOME/.card-counter/~
 
 ** Examples
-When I first run ~card-counter~ on a new machine. I run the config command, this allows me to set things like my Trello access information and my preferred database.
+When I first run ~card-counter~ on a new machine. I run the config command. This allows me to set things like my Trello access information and my preferred database.
 #+BEGIN_SRC bash
 card-counter config
 #+END_SRC
@@ -65,7 +65,7 @@ card-counter
 #+END_SRC
 This will bring up a list of boards you have access to and allow you to choose what board you want to run the command on.
 
-If I know I'm going be running card-counter on the same board all the time I might use the --board, -b, option and use the board-id. You can find the board-id in the URL for your board.
+If I know I'm going be running card-counter on the same board all the time, I might use the --board, -b, option and use the board-id. You can find the board-id in the URL for your board.
 
 A typical Trello board URL looks like:
 https://trello.com/b/<board-id>/<your-board>
