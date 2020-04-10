@@ -141,7 +141,7 @@ async fn run() -> Result<()> {
          .default_value("true")
          .takes_value(true))
     .arg(Arg::with_name("database")
-         .short("D")
+         .short("d")
          .long("database")
          .value_name("DATABASE")
          .default_value("local")
