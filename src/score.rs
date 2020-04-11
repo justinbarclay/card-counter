@@ -1,6 +1,6 @@
 // File for retrieving cards from trello and scoring them
 use crate::errors::*;
-use crate::trello::{get_cards, Auth, Board, List, Card};
+use crate::trello::{Auth, Board, Card, List};
 use dialoguer::Select;
 use prettytable::Table;
 use regex::Captures;
@@ -69,7 +69,10 @@ pub async fn select_board(auth: &Auth) -> Result<Board> {
   Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
 }
 
-pub fn build_decks(lists: Vec<List>, mut associated_cards: HashMap<String, Vec<Card>>) -> Vec<Deck> {
+pub fn build_decks(
+  lists: Vec<List>,
+  mut associated_cards: HashMap<String, Vec<Card>>,
+) -> Vec<Deck> {
   let mut decks = Vec::new();
   for list in lists {
     let cards = associated_cards.entry(list.id).or_default();

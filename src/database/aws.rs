@@ -20,12 +20,11 @@ use rusoto_dynamodb::{
   QueryInput,
 };
 
-use super::config::Config;
-use crate::score::Deck;
-use chrono::NaiveDateTime;
-use dialoguer::{Confirmation, Select};
-use serde_dynamodb;
-use std::{collections::HashMap, convert::TryInto};
+use super::{config::Config, DateRange};
+
+use dialoguer::Confirmation;
+
+use std::collections::HashMap;
 
 /////////////////////////
 // Helper Functions
@@ -84,33 +83,10 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
   match table_query {
     Ok(_) => Ok(true),
     // We need to break down the error from
-    Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => {
-      Ok(false)
-    }
-    Err(err) => {
-      Err(err)},
-  }.chain_err(|| "Unable to connect to DynamoDB.")
-}
-
-// TODO: Get rid of consolidate with function in file
-fn select_date(keys: &[u64]) -> Option<u64> {
-  let items: Vec<String> = keys
-    .iter()
-    .map(|item| NaiveDateTime::from_timestamp(item.clone()
-                                              .try_into()
-                                              .unwrap(),
-                                              0)
-         .format("%b %d, %R UTC")
-         .to_string())
-    .collect();
-  let index: usize = Select::new()
-    .with_prompt("Select a date: ")
-    .items(&items)
-    .default(0)
-    .interact()
-    .unwrap();
-
-  Some(keys[index])
+    Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => Ok(false),
+    Err(err) => Err(err),
+  }
+  .chain_err(|| "Unable to connect to DynamoDB.")
 }
 
 fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
@@ -128,7 +104,7 @@ pub struct Aws {
 #[async_trait]
 impl Database for Aws {
   /// Adds an entry into DynamoDB. May return an error if there are problems parsing an Entry into a hashmap or when trying to talk to DynamoDB
-  async fn add_entry(&self, entry: Entry) -> Result<()> {
+  async fn add_entry(&mut self, entry: Entry) -> Result<()> {
     self
       .client
       .put_item(PutItemInput {
@@ -206,12 +182,12 @@ impl Database for Aws {
   async fn query_entries(
     &self,
     board_id: String,
-    time_stamp: Option<u64>,
-  ) -> Result<Option<Vec<Deck>>> {
+    date_range: Option<DateRange>,
+  ) -> Result<Option<Entries>> {
     let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
-    let query_string = match time_stamp {
-      Some(_) => "board_id = :board_id and time_stamp > :timestamp".to_string(),
-      None => "board_id = :board_id".to_string(),
+    let query_string = match date_range {
+      Some(_) => "board_id = :board_id and time_stamp <= :end and time_stamp => :start".to_string(),
+      None => "board_id = :board_id ".to_string(),
     };
 
     query_values.insert(
@@ -222,11 +198,19 @@ impl Database for Aws {
       },
     );
 
-    if let Some(timestamp) = time_stamp {
+    if let Some(range) = date_range {
       query_values.insert(
-        ":timestamp".to_string(),
+        ":start".to_string(),
         AttributeValue {
-          n: Some(timestamp.to_string()),
+          n: Some(range.start.to_string()),
+          ..Default::default()
+        },
+      );
+
+      query_values.insert(
+        ":end".to_string(),
+        AttributeValue {
+          n: Some(range.end.to_string()),
           ..Default::default()
         },
       );
@@ -251,7 +235,7 @@ impl Database for Aws {
       .filter_map(Result::ok)
       .collect();
 
-    self.get_decks_by_date(entries)
+    Ok(Some(entries))
   }
 }
 
@@ -287,23 +271,5 @@ impl Aws {
     }
 
     Ok(aws)
-  }
-
-  // Given a board, the user will be prompted to select an entry based on their timestamps. This can error based on generating prompts to a user.
-  pub fn get_decks_by_date(&self, board: Entries) -> Result<Option<Vec<Deck>>> {
-    let mut keys: Vec<u64> = board.iter().map(|entry| entry.time_stamp).collect();
-
-    keys.sort();
-    let date;
-
-    if keys.len() > 0 {
-      date = select_date(&keys).chain_err(|| "Unable to select a date.")?;
-    } else {
-      return Ok(None);
-    }
-    match board.iter().find(|entry| entry.time_stamp == date) {
-      Some(entry) => Ok(Some(entry.decks.clone())),
-      None => Ok(None),
-    }
   }
 }

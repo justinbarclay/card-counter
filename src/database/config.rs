@@ -7,7 +7,7 @@ use std::{
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
 
-use crate::database::file::config_file;
+use crate::database::json::config_file;
 use crate::errors::*;
 use crate::trello::Auth;
 

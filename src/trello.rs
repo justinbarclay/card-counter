@@ -116,12 +116,15 @@ pub async fn get_board(board_id: &str, auth: &Auth) -> Result<Board> {
   Ok(board)
 }
 
-pub fn collect_cards(cards: Vec<Card>) -> HashMap<String, Vec<Card>>{
-  cards.into_iter().fold(HashMap::new(), |mut collection: HashMap<String, Vec<Card>>, card: Card|{
-    let list_id = card.id_list.clone();
-    collection.entry(list_id).or_default().push(card);
-    collection
-  })
+pub fn collect_cards(cards: Vec<Card>) -> HashMap<String, Vec<Card>> {
+  cards.into_iter().fold(
+    HashMap::new(),
+    |mut collection: HashMap<String, Vec<Card>>, card: Card| {
+      let list_id = card.id_list.clone();
+      collection.entry(list_id).or_default().push(card);
+      collection
+    },
+  )
 }
 
 /// Returns all cards associated with a board

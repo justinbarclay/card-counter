@@ -15,16 +15,11 @@ mod errors;
 mod score;
 mod trello;
 
-use database::{
-  aws::Aws,
-  config::Config,
-  file::{get_decks_by_date, save_local_database},
-  Database, Entry,
-};
-use std::collections::HashMap;
+use database::{aws::Aws, config::Config, get_decks_by_date, json::JSON, Database, Entry};
 use errors::Result;
 use score::{build_decks, print_decks, print_delta, select_board, Deck};
-use trello::{get_board, get_lists, Auth, Board, Card, get_cards, collect_cards};
+use std::collections::HashMap;
+use trello::{collect_cards, get_board, get_cards, get_lists, Auth, Board, Card};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Result<Option<Auth>> {
@@ -62,38 +57,10 @@ fn auth_from_env() -> Option<Auth> {
   Some(Auth { key, token })
 }
 
-async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board, Vec<Deck>)> {
-  let filter: Option<&str> = matches.value_of("filter");
-  // Parse arguments, if board_id isn't found
-  let board: Board = match matches.value_of("board_id") {
-    Some(id) => get_board(id, &auth).await?,
-    None => select_board(&auth).await?,
-  };
-
-  let lists = get_lists(&auth, &board.id).await?;
-  let cards = get_cards(&auth, &board.id).await?;
-  let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
-  let decks = build_decks(lists, map_cards);
-
-  if matches.is_present("compare") {
-    if let Some(old_decks) = get_decks_by_date(&board.id) {
-      print_delta(&decks, &old_decks, &board.name, filter);
-    } else {
-      println!("Unable to retrieve any decks from the database.");
-      print_decks(&decks, &board.name, filter);
-    }
-  } else {
-    print_decks(&decks, &board.name, filter);
-  }
-
-  Ok((board, decks))
-}
-
-
-async fn show_score_aws(
+async fn show_score(
   auth: Auth,
   matches: &clap::ArgMatches<'_>,
-  client: Box<dyn Database>,
+  client: &Box<dyn Database>,
 ) -> Result<(Board, Vec<Deck>)> {
   let filter: Option<&str> = matches.value_of("filter");
   // Parse arguments, if board_id isn't found
@@ -101,15 +68,15 @@ async fn show_score_aws(
     Some(id) => get_board(id, &auth).await?,
     None => select_board(&auth).await?,
   };
-
   let lists = get_lists(&auth, &board.id).await?;
   let cards = get_cards(&auth, &board.id).await?;
   let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
   let decks = build_decks(lists, map_cards);
 
-
   if matches.is_present("compare") {
-    if let Some(old_decks) = client.query_entries(board.id.to_string(), None).await? {
+    if let Some(old_entries) = client.query_entries(board.id.to_string(), None).await? {
+      // TODO: Fix this old_decks could be empty
+      let old_decks = get_decks_by_date(old_entries).unwrap();
       print_delta(&decks, &old_decks, &board.name, filter);
     } else {
       println!("Unable to retrieve any decks from the database.");
@@ -122,47 +89,63 @@ async fn show_score_aws(
   Ok((board, decks))
 }
 
-// Run all of network code asynchronously using tokio and await
-async fn run() -> Result<()> {
-  // TODO: Pull this out to yaml at some point
-  let matches = App::new("Card Counter")
+fn cli<'a>() -> clap::ArgMatches<'a> {
+  App::new("Card Counter")
     .version(env!("CARGO_PKG_VERSION"))
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI for quickly summarizing story points in Trello lists")
-    .arg(Arg::with_name("board_id")
-         .short("b")
-         .long("board-id")
-         .value_name("ID")
-         .help("The ID of the board where the cards are meant to be counted from")
-         .takes_value(true))
-    .arg(Arg::with_name("filter")
-         .short("f")
-         .long("filter")
-         .value_name("FILTER")
-         .help("Filters out all lists with a name that contains the substring FILTER")
-         .takes_value(true))
-    .arg(Arg::with_name("save")
-         .short("s")
-         .long("save")
-         .value_name("SAVE")
-         .help("Save the current entry in the database")
-         .default_value("true")
-         .takes_value(true))
-    .arg(Arg::with_name("database")
-         .short("d")
-         .long("database")
-         .value_name("DATABASE")
-         .default_value("local")
+    .arg(
+      Arg::with_name("board_id")
+        .short("b")
+        .long("board-id")
+        .value_name("ID")
+        .help("The ID of the board where the cards are meant to be counted from")
+        .takes_value(true),
+    )
+    .arg(
+      Arg::with_name("filter")
+        .short("f")
+        .long("filter")
+        .value_name("FILTER")
+        .help("Filters out all lists with a name that contains the substring FILTER")
+        .takes_value(true),
+    )
+    .arg(
+      Arg::with_name("save")
+        .short("s")
+        .long("save")
+        .value_name("SAVE")
+        .help("Save the current entry in the database")
+        .default_value("true")
+        .possible_values(&["true", "false"])
+        .takes_value(true),
+    )
+    .arg(
+      Arg::with_name("database")
+        .short("d")
+        .long("database")
+        .value_name("DATABASE")
+        .default_value("local")
         .help("Choose the database you want to save current request in")
-         .possible_values(&["local", "aws"]))
-    .arg(Arg::with_name("compare")
-         .short("c")
-         .long("compare")
-         .help("Compares the current trello board with a previous entry"))
-    .subcommand(clap::SubCommand::with_name("config")
-                .about("Edit properties associated with card-counter"))
-    .get_matches();
+        .possible_values(&["local", "aws"])
+        .takes_value(true),
+    )
+    .arg(
+      Arg::with_name("compare")
+        .short("c")
+        .long("compare")
+        .help("Compares the current trello board with a previous entry"),
+    )
+    .subcommand(
+      clap::SubCommand::with_name("config").about("Edit properties associated with card-counter"),
+    )
+    .get_matches()
+}
 
+// Run all of network code asynchronously using tokio and await
+async fn run() -> Result<()> {
+  // TODO: Pull this out to yaml at some point
+  let matches = cli();
 
   if matches.subcommand_matches("config").is_some() {
     Config::from_file_or_default()?.update_file()?;
@@ -176,28 +159,24 @@ async fn run() -> Result<()> {
     None => std::process::exit(1),
   };
 
-  let (board, decks) = match matches.value_of("database") {
-    Some("local") => show_score(auth, &matches).await?,
-    Some("aws") => show_score_aws(auth.clone(), &matches, Box::new(Aws::init(&Config::from_file_or_default()?).await?)).await?,
+  let mut database: Box<dyn Database> = match matches.value_of("database") {
+    Some("local") => Box::new(JSON::init()?),
+    Some("aws") => Box::new(Aws::init(&Config::from_file_or_default()?).await?),
     _ => panic!("Unable to find a matching database"),
   };
+  let (board, decks) = show_score(auth.clone(), &matches, &database).await?;
 
-  if let Some(save) = matches.value_of("save") {
-    match (save, matches.value_of("database")) {
-      ("true", Some("local")) => save_local_database(&board.id, &decks)?,
-      ("true", Some("aws")) => {
-        let database = Box::new(Aws::init(&Config::from_file_or_default()?).await?);
-        database
-          .add_entry(Entry {
-            board_id: board.id,
-            time_stamp: Entry::get_current_timestamp()?,
-            decks,
-          })
-          .await?;
-      }
-      _ => (),
-    };
-  }
+  if matches.is_present("save") &&
+    matches.value_of("save").unwrap() == "true" {
+    println!("Saving...");
+    database
+      .add_entry(Entry {
+        board_id: board.id,
+        time_stamp: Entry::get_current_timestamp()?,
+        decks,
+      })
+      .await?;
+  };
   Ok(())
 }
 
@@ -205,7 +184,6 @@ async fn run() -> Result<()> {
 // formatted. If you don't care (i.e. you want to display the full
 // error during an assert) you can just call the `display_chain` method
 // on the error object
-#[allow(dead_code)]
 #[tokio::main]
 async fn main() {
   if let Err(ref e) = run().await {
