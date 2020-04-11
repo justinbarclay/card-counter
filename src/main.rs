@@ -21,9 +21,10 @@ use database::{
   file::{get_decks_by_date, save_local_database},
   Database, Entry,
 };
+use std::collections::HashMap;
 use errors::Result;
 use score::{build_decks, print_decks, print_delta, select_board, Deck};
-use trello::{get_board, get_lists, Auth, Board};
+use trello::{get_board, get_lists, Auth, Board, Card, get_cards, collect_cards};
 
 // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
 fn check_for_auth() -> Result<Option<Auth>> {
@@ -69,8 +70,10 @@ async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board
     None => select_board(&auth).await?,
   };
 
-  let cards = get_lists(&auth, &board.id).await?;
-  let decks = build_decks(&auth, cards).await?;
+  let lists = get_lists(&auth, &board.id).await?;
+  let cards = get_cards(&auth, &board.id).await?;
+  let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
+  let decks = build_decks(lists, map_cards);
 
   if matches.is_present("compare") {
     if let Some(old_decks) = get_decks_by_date(&board.id) {
@@ -86,6 +89,7 @@ async fn show_score(auth: Auth, matches: &clap::ArgMatches<'_>) -> Result<(Board
   Ok((board, decks))
 }
 
+
 async fn show_score_aws(
   auth: Auth,
   matches: &clap::ArgMatches<'_>,
@@ -98,8 +102,11 @@ async fn show_score_aws(
     None => select_board(&auth).await?,
   };
 
-  let cards = get_lists(&auth, &board.id).await?;
-  let decks = build_decks(&auth, cards).await?;
+  let lists = get_lists(&auth, &board.id).await?;
+  let cards = get_cards(&auth, &board.id).await?;
+  let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
+  let decks = build_decks(lists, map_cards);
+
 
   if matches.is_present("compare") {
     if let Some(old_decks) = client.query_entries(board.id.to_string(), None).await? {
@@ -114,6 +121,7 @@ async fn show_score_aws(
 
   Ok((board, decks))
 }
+
 // Run all of network code asynchronously using tokio and await
 async fn run() -> Result<()> {
   // TODO: Pull this out to yaml at some point

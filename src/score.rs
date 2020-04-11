@@ -1,6 +1,6 @@
 // File for retrieving cards from trello and scoring them
 use crate::errors::*;
-use crate::trello::{get_cards, Auth, Board, List};
+use crate::trello::{get_cards, Auth, Board, List, Card};
 use dialoguer::Select;
 use prettytable::Table;
 use regex::Captures;
@@ -69,11 +69,10 @@ pub async fn select_board(auth: &Auth) -> Result<Board> {
   Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
 }
 
-/// Iterates over all the cards in each lists and builds up the stats for a deck of cards
-pub async fn build_decks(auth: &Auth, lists: Vec<List>) -> Result<Vec<Deck>> {
+pub fn build_decks(lists: Vec<List>, mut associated_cards: HashMap<String, Vec<Card>>) -> Vec<Deck> {
   let mut decks = Vec::new();
   for list in lists {
-    let cards = get_cards(auth, &list.id).await?;
+    let cards = associated_cards.entry(list.id).or_default();
     let (score, unscored, estimated) = cards.iter().fold(
       (0, 0, 0),
       |(total, unscored, estimate), card| match get_score(&card.name) {
@@ -100,7 +99,7 @@ pub async fn build_decks(auth: &Auth, lists: Vec<List>) -> Result<Vec<Deck>> {
       estimated,
     });
   }
-  Ok(decks)
+  decks
 }
 
 /// Converts a trello effort score either [\d] or (\d) into a number.

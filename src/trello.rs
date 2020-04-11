@@ -2,6 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::errors::*;
+use std::collections::HashMap;
 // Unofficial struct to hold the key and token for working with the trello api
 #[derive(Clone, Debug)]
 pub struct Auth {
@@ -50,6 +51,9 @@ pub struct List {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Card {
   pub name: String,
+
+  #[serde(rename = "idList")]
+  pub id_list: String,
 }
 // Adds formatting to error message if getting a 401 from the api
 pub fn no_authentication(auth: &Auth, response: &reqwest::Response) -> Result<()> {
@@ -112,12 +116,21 @@ pub async fn get_board(board_id: &str, auth: &Auth) -> Result<Board> {
   Ok(board)
 }
 
-pub async fn get_cards(auth: &Auth, list_id: &str) -> Result<Vec<Card>> {
+pub fn collect_cards(cards: Vec<Card>) -> HashMap<String, Vec<Card>>{
+  cards.into_iter().fold(HashMap::new(), |mut collection: HashMap<String, Vec<Card>>, card: Card|{
+    let list_id = card.id_list.clone();
+    collection.entry(list_id).or_default().push(card);
+    collection
+  })
+}
+
+/// Returns all cards associated with a board
+pub async fn get_cards(auth: &Auth, board_id: &str) -> Result<Vec<Card>> {
   let client = reqwest::Client::new();
   let response = client
     .get(&format!(
-      "https://api.trello.com/1/lists/{}/cards?card_fields=name&key={}&token={}",
-      list_id, auth.key, auth.token
+      "https://api.trello.com/1/boards/{}/cards?card_fields=name&key={}&token={}",
+      board_id, auth.key, auth.token
     ))
     .send()
     .await?;
