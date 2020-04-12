@@ -90,7 +90,7 @@ async fn show_score(
 }
 
 fn cli<'a>() -> clap::ArgMatches<'a> {
-  App::new("Card Counter")
+  App::new("card-counter")
     .version(env!("CARGO_PKG_VERSION"))
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI for quickly summarizing story points in Trello lists")
