@@ -104,22 +104,21 @@ impl Database for JSON {
   ///   }
   /// }
   /// ```
-  async fn add_entry(&mut self, entry: Entry) -> Result<()> {
-    // Adds an entry into the database using the board_id and timestamp as keys.
-    // If no board_id entry currently exists it creates one and initiates it with
-    // current timestamp and list of decks as its first entry.
-    match self.database.get_mut(&entry.board_id) {
+  async fn add_entry(&self, entry: Entry) -> Result<()> {
+    // Copies the database and adds_entry into the copy
+    let mut json = self.clone();
+    match json.database.get_mut(&entry.board_id) {
       Some(timestamps) => {
         timestamps.insert(entry.time_stamp, entry.decks);
       }
       None => {
         let mut timestamps = HashMap::new();
         timestamps.insert(entry.time_stamp, entry.decks);
-        self.database.insert(entry.board_id, timestamps);
+        json.database.insert(entry.board_id, timestamps);
       }
     };
 
-    self.save()
+    json.save()
   }
   async fn all_entries(&self) -> Result<Option<Entries>> {
     Ok(None)

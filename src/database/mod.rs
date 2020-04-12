@@ -101,7 +101,7 @@ impl Default for DateRange {
 #[async_trait]
 pub trait Database {
   // May mutate self
-  async fn add_entry(&mut self, entry: Entry) -> Result<()>;
+  async fn add_entry(&self, entry: Entry) -> Result<()>;
   async fn all_entries(&self) -> Result<Option<Entries>>;
   async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>>;
   async fn query_entries(

@@ -104,7 +104,7 @@ pub struct Aws {
 #[async_trait]
 impl Database for Aws {
   /// Adds an entry into DynamoDB. May return an error if there are problems parsing an Entry into a hashmap or when trying to talk to DynamoDB
-  async fn add_entry(&mut self, entry: Entry) -> Result<()> {
+  async fn add_entry(&self, entry: Entry) -> Result<()> {
     self
       .client
       .put_item(PutItemInput {
