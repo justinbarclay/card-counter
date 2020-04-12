@@ -27,7 +27,7 @@ SUBCOMMANDS:
     help      Prints this message or the help of the given subcommand(s)
 #+END_EXAMPLE
 ** Getting Started for Getting Started
-Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][getting one]]. Now that you've signed-up, _I_ am personally asking you to use it for a while. But not just use it, breathe it, live it, feel it deep down between your toes. Once your entire being is permeated with Trello, you are ready to start tracking the progress you make in [[https://www.atlassian.com/agile/scrum/sprints][sprints]].
+Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, I recommend [[https://trello.com/signup][getting one]]. Now that you've signed-up, _I_ am personally asking you to use it for a while. But not just use it, breathe it, live it, feel it deep down in your meat covered bones. Once your entire being is permeated with Trello, you are ready to start tracking the progress you make in [[https://www.atlassian.com/agile/scrum/sprints][sprints]].
 
 Finally, you've got a Trello account and you've created some boards. Within those boards, you've created stacks of lists of cards. And within each card, you've scoped out the work and gave it a [[https://en.wikipedia.org/wiki/Fibonacci_scale_(agile)][score]].
 
@@ -69,7 +69,7 @@ card-counter
 #+END_SRC
 This will bring up a list of boards you have access to and get you to choose what board you want to run the command on.
 
-If you know that you are going be running ~card-counter~ on the same board all the time, you might use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
+If you know that you are going be to running ~card-counter~ on the same board all the time, you might use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
 
 A typical Trello board URL looks like:
 https://trello.com/b/<board-id>/<your-board>
@@ -81,7 +81,7 @@ card-counter --board-id wtPNQDEV
 
 If you have a board that is a little noisy, you can filter out lists that you don't want to track. You can do this by using the ~-f~ (~--filter~) option. If you add a substring to the list(s), such as [ignore], ~card-counter~ can filter out these lists for you. Be careful however, the filter option is case sensitive.
 #+BEGIN_SRC bash
-card-counter --board-if wtPNQDEV --filter ignore 
+card-counter --board-id wtPNQDEV --filter ignore
 #+END_SRC
 
 ** "Advanced"
@@ -90,7 +90,7 @@ Are you forced to collaborate with others? Weirder yet, do you like to collabora
 To start with you'll need to ask your administrator to give you read/write access to DynamoDB. This process can take anywhere from 3 weeks to 4 months.
 
 **** Authentication
-Did you return with the correct AWS permissions? That's great! I'm assuming in the interceding 3 months that you've become familiar with the AWS CLI. If so, this suggests your credentials are set somewhere. You probably don't need to do anything. If you've rushed into this, and it is your first time using AWS, you can start reading [[https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html][Amazon's documentation]] to find out what you need to set.
+Did you return with the correct AWS permissions? That's great! I'm assuming in the interceding 3 months that you've become familiar with the AWS CLI. If so, this suggests your credentials are set somewhere. You probably don't need to do anything. If you have rushed into this, and it is your first time using AWS, you can start reading [[https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html][Amazon's documentation]] to find out what you need to set.
 
 ~card-counter~ will check several locations for your AWS credentials and Region.
 
