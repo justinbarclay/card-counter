@@ -21,7 +21,7 @@ pub struct JSON {
   database: HashMap<String, LocalEntry>,
 }
 
-pub type LocalEntry = HashMap<u64, Vec<Deck>>;
+pub type LocalEntry = HashMap<i64, Vec<Deck>>;
 
 // This code has a lot of panics in it, I've chosen to do this because where there are panics it's in the case of IO or data errors.
 // Such as being unable to open the file, unable to parse the file into json, or being unable to save the file. Unfortunately,
@@ -56,7 +56,8 @@ fn find_or_create_main_dir() -> Result<PathBuf> {
   let path = main_dir();
 
   if !(path.exists() && path.is_dir()) {
-    fs::create_dir(path.clone()).chain_err(|| "Unable to create .card-counter directory in $HOME")?;
+    fs::create_dir(path.clone())
+      .chain_err(|| "Unable to create .card-counter directory in $HOME")?;
   }
 
   Ok(path)
@@ -123,7 +124,7 @@ impl Database for JSON {
   async fn all_entries(&self) -> Result<Option<Entries>> {
     Ok(None)
   }
-  async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>> {
+  async fn get_entry(&self, board_name: String, time_stamp: i64) -> Result<Option<Entry>> {
     let result = match self
       .database
       .get(&board_name)
