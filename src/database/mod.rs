@@ -4,11 +4,32 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, time::SystemTime};
+use std::{convert::TryInto, time::SystemTime, fmt};
 
 pub mod aws;
 pub mod config;
 pub mod json;
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum DatabaseType{
+  Aws,
+  Local
+}
+
+impl fmt::Display for DatabaseType {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+      DatabaseType::Local => write!(f, "local"),
+      DatabaseType::Aws => write!(f, "aws"),
+    }
+  }
+}
+
+impl Default for DatabaseType {
+  fn default() -> Self {
+    DatabaseType::Local
+  }
+}
 
 fn select_date(keys: &[u64]) -> Option<u64> {
   let items: Vec<String> = keys

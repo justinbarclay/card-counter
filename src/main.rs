@@ -15,7 +15,7 @@ mod errors;
 mod score;
 mod trello;
 
-use database::{aws::Aws, config::Config, get_decks_by_date, json::JSON, Database, Entry};
+use database::{aws::Aws, config::Config, get_decks_by_date, json::JSON, Database, Entry, DatabaseType};
 use errors::Result;
 use score::{build_decks, print_decks, print_delta, select_board, Deck};
 use std::collections::HashMap;
@@ -55,6 +55,25 @@ fn auth_from_env() -> Option<Auth> {
     return None;
   }
   Some(Auth { key, token })
+}
+
+fn check_for_database(matches: &clap::ArgMatches<'_>) -> Result<DatabaseType>{
+  match Config::from_file()? {
+    Some(config) => Ok(config.database),
+    None => match matches.value_of("database"){
+      Some("aws") => Ok(DatabaseType::Aws),
+      Some("local") => Ok(DatabaseType::Local),
+      Some(some) => {
+        println!("Unable to find database for {}. Using local database instead", some);
+        Ok(DatabaseType::Local)
+      }
+      None => {
+        println!("No database chosen, defaulting to local.");
+        Ok(DatabaseType::Local)
+      }
+    }
+  }
+
 }
 
 async fn show_score(
@@ -125,7 +144,6 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
         .short("d")
         .long("database")
         .value_name("DATABASE")
-        .default_value("local")
         .help("Choose the database you want to save current request in")
         .possible_values(&["local", "aws"])
         .takes_value(true),
@@ -152,23 +170,22 @@ async fn run() -> Result<()> {
     std::process::exit(0)
   }
 
-  // If we error for from trying to read the auth file then toss it up the stack otherwise deconstruct
-  // Optional
+  // If we error from trying to read the auth file then toss it up the stack otherwise deconstruct
+
   let auth = match check_for_auth()? {
     Some(auth) => auth,
     None => std::process::exit(1),
   };
 
-  let mut database: Box<dyn Database> = match matches.value_of("database") {
-    Some("local") => Box::new(JSON::init()?),
-    Some("aws") => Box::new(Aws::init(&Config::from_file_or_default()?).await?),
-    _ => panic!("Unable to find a matching database"),
+  let database: Box<dyn Database> = match check_for_database(&matches)? {
+    DatabaseType::Aws => Box::new(Aws::init(&Config::from_file_or_default()?).await?),
+    DatabaseType::Local => Box::new(JSON::init()?)
   };
+
   let (board, decks) = show_score(auth.clone(), &matches, &database).await?;
 
   if matches.is_present("save") &&
     matches.value_of("save").unwrap() == "true" {
-    println!("Saving...");
     database
       .add_entry(Entry {
         board_id: board.id,

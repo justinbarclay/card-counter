@@ -1,6 +1,5 @@
 use std::io::prelude::*;
 use std::{
-  fmt,
   io::{BufReader, BufWriter, SeekFrom},
 };
 
@@ -10,12 +9,13 @@ use serde::{Deserialize, Serialize};
 use crate::database::json::config_file;
 use crate::errors::*;
 use crate::trello::Auth;
+use super::DatabaseType;
 
 // The possible values that trello accepts for token expiration times
 pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct Trello {
+pub struct Trello {
   key: String,
   token: String,
   expiration: String,
@@ -32,39 +32,18 @@ impl Default for Trello {
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
-struct AWS {
+pub struct AWS {
   secret_access_key: String,
   access_key_id: String,
   region: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-enum Preference {
-  Local,
-  Aws,
-}
-
-impl fmt::Display for Preference {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    match self {
-      Preference::Local => write!(f, "local"),
-      Preference::Aws => write!(f, "aws"),
-    }
-  }
-}
-
-impl Default for Preference {
-  fn default() -> Self {
-    Preference::Local
-  }
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  trello: Trello,
-  aws: Option<AWS>,
+  pub trello: Trello,
+  pub aws: Option<AWS>,
   #[serde(default)]
-  database: Preference,
+  pub database: DatabaseType,
 }
 
 impl Default for Config {
@@ -72,7 +51,7 @@ impl Default for Config {
     Config {
       trello: Trello::default(),
       aws: None,
-      database: Preference::default(),
+      database: DatabaseType::default(),
     }
   }
 }
@@ -132,8 +111,8 @@ fn aws_details(aws: Option<AWS>) -> Result<AWS> {
   })
 }
 
-fn database_preference() -> Result<Preference> {
-  let preferences = [Preference::Local, Preference::Aws];
+fn database_preference() -> Result<DatabaseType> {
+  let preferences = [DatabaseType::Local, DatabaseType::Aws];
   let index = Select::new()
     .with_prompt("What database would you prefer?")
     .items(&preferences)
