@@ -159,7 +159,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .short("s")
             .long("start")
             .value_name("START-DATE")
-            .help("Start of the Date Range for the Burndown Chart")
+            .help("Start of the Date Range for the Burndown Chart (yyyy-mm-dd)")
             .takes_value(true),
         )
         .arg(
@@ -167,7 +167,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .short("e")
             .long("end")
             .value_name("END-DATE")
-            .help("End of the Date Range for the Burndown Chart")
+            .help("End of the Date Range for the Burndown Chart (yyyy-mm-dd)")
             .takes_value(true),
         )
         .arg(
@@ -205,9 +205,9 @@ pub async fn output_burndown(
     None => select_board(&auth).await?,
   };
 
-  let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%d-%m-%Y %H:%M:%S")
+  let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%F %H:%M:%S")
     .expect("Unable to parse date");
-  let end = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", end_str), "%d-%m-%Y %H:%M:%S")
+  let end = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", end_str), "%F %H:%M:%S")
     .expect("Unable to parse date");
   let range = DateRange {
     start: start.timestamp(),
