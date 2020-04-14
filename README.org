@@ -57,8 +57,35 @@ You can begin thinking about getting started with ~card-counter~ now. But before
 There! We're done thinking about getting started. card-counter now knows enough about you to start talking to the Trello API. 
 
 If you're curious about what information card-counter stores, you can find the config file and local database in ~$HOME/.card-counter/~. If you have privacy concerns about what card-counter is doing with your information, don't worry about it. card-counter pulls down your information from the Trello API, processes it, and stores it all locally on your machine.
+** Setting up Trello
+*** What's the point?
+Now that you understand the theory, we are ready to set up our boards to be processed by card-counter. Luckily, preparing your board for card-counter is simple. Just put in some numbers and you are set. Ok, it's not quite that simple but it's close. 
 
-** Examples
+card-counter tracks the estimated and actual effort a card has taken. It does this by using numbers encapsulated in square brackets -- ~[]~ -- and others in parentheses -- ~()~ -- placed in the card's title. If the title only has a number in parentheses, it acts as both the "actual" and "estimated" effort. However, when numbers in square brackets and parentheses are in a title, the number in the square brackets will act as the "actual" effort taken and the number in the parentheses will act as the "estimated" effort. In short, numbers in square brackets are only counted as corrective numbers.
+
+It's hard to see what this means so let's walk through an example:
+
+Sally has a list, "This Sprint", which has a singled card titled "Write docs for card-counter". They have done their homework and they know that card-counter docs are lacking. So they think this is going to be 2 for effort, whatever 2 means. Sally updates the card's name to "Write docs for card-counter (2)".
+If Sally ran ~card-counter~, it would report:
+
+
+| List        | Cards | Score | Estimated | Unscored |
+|-------------+-------+-------+-----------+---------|
+| This Sprint |     1 |     2 |         2 |       0 |
+
+
+Now, through completing the task Sally had learned that card-counter's docs were in a much graver state than she had estimated. So, she updates the card's title: "(2)[4] Write docs for card-counter".
+
+Now, if Sally ran ~card-counter~, it would report:
+
+| List        | Cards | Score | Estimated | Unscored |
+|-------------+-------+-------+-----------+----------|
+| This Sprint |     1 |     4 |         2 |        0 |
+
+*** Burn it all down
+If you have a boss, then you know how much they like images. Images are great because they are easy to grasp and they have pretty colours. card-counter can help produce [[https://en.wikipedia.org/wiki/Burn_down_chart][burn down charts]] for you. You need to do two things to facilitate this process. One, have a board that is named "Done" or has "Done" somewhere in the name. Two, run ~card-counter~ regularly to produce a reasonable amount of data for that board (I recommend daily). 
+
+** CLI Examples
 When you first run ~card-counter~ on a new machine, you can run the config command. This allows card-counter to capture important pieces of information, like how to access your Trello data and your preferred database.
 #+BEGIN_SRC bash
 card-counter config
@@ -85,6 +112,25 @@ If you have a board that is a little noisy, you can filter out lists that you do
 card-counter --board-id wtPNQDEV --filter ignore
 #+END_SRC
 
+If you'd like to generate a burndown chart for your boss or because you like graphs, there is the ~burndown~ command. It will output comma separated values that you can feed to your graphing library of choice. For this example we'll have gnuplot generate a graph for us.
+
+First, we'll need to set-up a [[http://www.gnuplot.info/documentation.html][gnuplot]] script to parse the data for us. Save the following example in a file titled "burndown.gp".
+#+NAME: burndown.gp
+#+BEGIN_EXAMPLE
+set datafile separator ','
+set xdata time
+set timefmt '%d-%m-%y'
+set format x "%d %b"
+set autoscale x
+plot for[col=2:3] "burndown.csv" u 1:col title columnheader(col) with lines
+#+END_EXAMPLE
+
+The ~burndown~ command requires ~-s~ (~--start~) and ~-e~ (~--end~) options to run. They represent the start and end dates you wish to generate the burndown chart for. These dates are formatted as the string "day-month-year" for example: "14-04-2020". Additionally, we'll pass in filter and board-id options. We'll save the output to a file and tell gnuplot to process it for us.
+#+BEGIN_SRC bash
+card-counter burndown --board-id wtPNQDEV --start 01-04-2020 --end 14-04-2020 -f NoBurn > burndown.csv && gnuplot burndown.gp -p
+#+END_SRC
+
+[[./images/burndown.png]]
 ** "Advanced"
 Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's card-counter cloud edition! Where we allow you to store your data in DynamoDB.
 *** AWS DynamoDB

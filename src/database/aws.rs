@@ -142,7 +142,7 @@ impl Database for Aws {
   }
 
   /// Searches DynamoDB for an entry that contains board_id and time_stamp. It will return an error if there was an issue talking to DynamoDB or parsing the returned Entry.
-  async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>> {
+  async fn get_entry(&self, board_name: String, time_stamp: i64) -> Result<Option<Entry>> {
     let mut query: HashMap<String, AttributeValue> = HashMap::new();
     query.insert(
       "time_stamp".to_string(),

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, time::SystemTime, fmt};
+use std::{convert::TryInto, time::SystemTime, fmt, cmp::Ordering};
 
 pub mod aws;
 pub mod config;
@@ -31,7 +31,7 @@ impl Default for DatabaseType {
   }
 }
 
-fn select_date(keys: &[u64]) -> Option<u64> {
+fn select_date(keys: &[i64]) -> Option<i64> {
   let items: Vec<String> = keys
     .iter()
     .map(|item| {
@@ -55,14 +55,35 @@ fn select_date(keys: &[u64]) -> Option<u64> {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Entry {
   pub board_id: String,
-  pub time_stamp: u64,
+  pub time_stamp: i64,
   pub decks: Vec<Deck>,
 }
+
+impl Ord for Entry {
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.time_stamp.cmp(&other.time_stamp)
+  }
+}
+
+impl PartialOrd for Entry {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
+}
+
+impl PartialEq for Entry {
+  fn eq(&self, other: &Self) -> bool {
+    self.time_stamp == other.time_stamp
+  }
+}
+
+impl Eq for Entry {}
+
 type Entries = Vec<Entry>;
 
 // Given a board, the user will be prompted to select an entry based on their timestamps. This can error based on generating prompts to a user.
 pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {
-  let mut keys: Vec<u64> = entries.iter().map(|entry| entry.time_stamp).collect();
+  let mut keys: Vec<i64> = entries.iter().map(|entry| entry.time_stamp).collect();
 
   keys.sort();
   let date;
@@ -80,16 +101,45 @@ pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {
 }
 
 impl Entry {
-  pub fn get_current_timestamp() -> Result<u64> {
+  // Gets the current Unix timestampe
+  pub fn get_current_timestamp() -> Result<i64> {
     Ok(
       SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .chain_err(|| "Unable to get UNIX time.")?
-        .as_secs(),
+        .as_secs() as i64,
     )
   }
+  //
+  pub fn calculate_burndown(&self, filter: Option<&str>) -> (i32, i32) {
+    self
+      .decks
+      .iter()
+      .fold((0, 0), |(incomplete, complete), deck| {
+        if filter.is_some() && deck.list_name.contains(filter.unwrap()) {
+          (incomplete, complete)
+        } else if deck.list_name.contains("Done") {
+          (incomplete, complete + deck.score)
+        } else {
+          (incomplete + deck.score, complete)
+        }
+      })
+  }
 }
+pub fn format_to_burndown(entries: Vec<Entry>, filter: Option<&str>) -> Vec<String> {
+  let burndown = entries.iter().map(|entry| {
+    let (incomplete, complete) = entry.calculate_burndown(filter);
+    let time = NaiveDateTime::from_timestamp(entry.time_stamp, 0)
+      .format("%d-%m-%Y")
+      .to_string();
+    format!("{},{},{}", time, incomplete, complete)
+  });
 
+  //TODO: Make immutable
+  let mut output = vec!["Date,Incomplete,Complete".to_string()];
+  output.extend(burndown);
+  output
+}
 impl Default for Entry {
   fn default() -> Self {
     Entry {
@@ -100,10 +150,10 @@ impl Default for Entry {
     }
   }
 }
-
+#[derive(Debug)]
 pub struct DateRange {
-  start: u64,
-  end: u64,
+  pub start: i64,
+  pub end: i64,
 }
 
 impl Default for DateRange {
@@ -111,7 +161,7 @@ impl Default for DateRange {
     let time = SystemTime::now()
       .duration_since(SystemTime::UNIX_EPOCH)
       .unwrap() // Will panic
-      .as_secs();
+      .as_secs() as i64;
     DateRange {
       start: time,
       end: time,
@@ -124,7 +174,7 @@ pub trait Database {
   // May mutate self
   async fn add_entry(&self, entry: Entry) -> Result<()>;
   async fn all_entries(&self) -> Result<Option<Entries>>;
-  async fn get_entry(&self, board_name: String, time_stamp: u64) -> Result<Option<Entry>>;
+  async fn get_entry(&self, board_name: String, time_stamp: i64) -> Result<Option<Entry>>;
   async fn query_entries(
     &self,
     board_name: String,
