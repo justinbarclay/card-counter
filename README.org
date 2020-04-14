@@ -2,8 +2,9 @@
 * card-counter
 A CLI for quickly summarizing story points in Trello lists.
 
+[[./images/card-counter.gif]]
 #+BEGIN_EXAMPLE
-Card Counter 0.5.0-beta3
+card-counter 1.0.0-alpha-1
 Justin Barclay <justincbarclay@gmail.com>
 A CLI for quickly summarizing story points in Trello lists
 
@@ -11,20 +12,20 @@ USAGE:
     card-counter [FLAGS] [OPTIONS] [SUBCOMMAND]
 
 FLAGS:
-    -c, --compare    Compares the current Trello board with a previous entry
+    -c, --compare    Compares the current trello board with a previous entry
     -h, --help       Prints help information
     -V, --version    Prints version information
 
 OPTIONS:
     -b, --board-id <ID>          The ID of the board where the cards are meant to be counted from
-    -d, --database <DATABASE>    Choose the database you want to save current request in [default: local]  [possible
-                                 values: local, aws]
+    -d, --database <DATABASE>    Choose the database you want to save current request in [possible values: local, aws]
     -f, --filter <FILTER>        Filters out all lists with a name that contains the substring FILTER
-    -s, --save <SAVE>            Save the current entry in the database [default: true]
+    -s, --save <SAVE>            Save the current entry in the database [default: true]  [possible values: true, false]
 
 SUBCOMMANDS:
-    config    Edit properties associated with card-counter
-    help      Prints this message or the help of the given subcommand(s)
+    burndown    Parses data for a board and prints out data to be piped to gnuplot
+    config      Edit properties associated with card-counter.
+    help        Prints this message or the help of the given subcommand(s)
 #+END_EXAMPLE
 ** Getting Started for Getting Started
 Before you can even think about getting started, you will need a Trello account. If you don't have a Trello account, [[https://trello.com/signup][go get one]]. Use it for a while. But not just use it, breathe it, live it, feel it deep down in your meat covered bones. Once your entire being is permeated with Trello, you are ready to start tracking the progress you make in [[https://www.atlassian.com/agile/scrum/sprints][sprints]].
@@ -59,22 +60,21 @@ There! We're done thinking about getting started. card-counter now knows enough 
 If you're curious about what information card-counter stores, you can find the config file and local database in ~$HOME/.card-counter/~. If you have privacy concerns about what card-counter is doing with your information, don't worry about it. card-counter pulls down your information from the Trello API, processes it, and stores it all locally on your machine.
 ** Setting up Trello
 *** What's the point?
-Now that you understand the theory, we are ready to set up our boards to be processed by card-counter. Luckily, preparing your board for card-counter is simple. Just put in some numbers and you are set. Ok, it's not quite that simple but it's close. 
+Now that you understand the theory, we are ready to set up our boards to be processed by card-counter. Luckily, preparing your board for card-counter is simple. You just put in some numbers and you are set. Ok, it's not quite that simple,  but it's close. 
 
-card-counter tracks the estimated and actual effort a card has taken. It does this by using numbers encapsulated in square brackets -- ~[]~ -- and others in parentheses -- ~()~ -- placed in the card's title. If the title only has a number in parentheses, it acts as both the "actual" and "estimated" effort. However, when numbers in square brackets and parentheses are in a title, the number in the square brackets will act as the "actual" effort taken and the number in the parentheses will act as the "estimated" effort. In short, numbers in square brackets are only counted as corrective numbers.
+card-counter tracks the estimated and actual effort a card has taken. It does this by using numbers inside of parentheses -- ~()~ -- and square brackets -- ~[]~ -- within the card's title. If the title only has a number in parentheses, it acts as both the "actual" and "estimated" effort. However, if there are numbers in parentheses and in square brackets in the title, the number in the square brackets will count as the "actual" effort taken and the number in the parentheses will act as the "estimated" effort.  In short, numbers in square brackets are only counted as corrective numbers.
 
 It's hard to see what this means so let's walk through an example:
 
-Sally has a list, "This Sprint", which has a singled card titled "Write docs for card-counter". They have done their homework and they know that card-counter docs are lacking. So they think this is going to be 2 for effort, whatever 2 means. Sally updates the card's name to "Write docs for card-counter (2)".
+Sally has a list, "This Sprint", which has a singled card titled "Write docs for card-counter". They have done their homework and they know that the documentation for card-counter is lacking. They estimate that this is going to be an effort of 2. Sally updates the card's name to "Write docs for card-counter (2)".
 If Sally ran ~card-counter~, it would report:
-
 
 | List        | Cards | Score | Estimated | Unscored |
 |-------------+-------+-------+-----------+---------|
 | This Sprint |     1 |     2 |         2 |       0 |
 
 
-Now, through completing the task Sally had learned that card-counter's docs were in a much graver state than she had estimated. So, she updates the card's title: "(2)[4] Write docs for card-counter".
+After completing the task, Sally had learned that card-counter's docs were in a much graver state than she had estimated. She updates the card's title to "(2)[4] Write docs for card-counter".
 
 Now, if Sally ran ~card-counter~, it would report:
 
@@ -83,8 +83,7 @@ Now, if Sally ran ~card-counter~, it would report:
 | This Sprint |     1 |     4 |         2 |        0 |
 
 *** Burn it all down
-If you have a boss, then you know how much they like images. Images are great because they are easy to grasp and they have pretty colours. card-counter can help produce [[https://en.wikipedia.org/wiki/Burn_down_chart][burn down charts]] for you. You need to do two things to facilitate this process. One, have a board that is named "Done" or has "Done" somewhere in the name. Two, run ~card-counter~ regularly to produce a reasonable amount of data for that board (I recommend daily). 
-
+If you have a boss, you know how much they like images. Images are great communication tools. They are easy to understand and they have pretty colours. card-counter can help produce [[https://en.wikipedia.org/wiki/Burn_down_chart][burn down charts]] for you. You need to do two things to facilitate this process: One, have a board that has "Done" somewhere in the name. Two, run ~card-counter~ regularly to produce a reasonable amount of data for that board (daily).
 ** CLI Examples
 When you first run ~card-counter~ on a new machine, you can run the config command. This allows card-counter to capture important pieces of information, like how to access your Trello data and your preferred database.
 #+BEGIN_SRC bash
@@ -96,6 +95,7 @@ After that, you can run the command itself.
 card-counter 
 #+END_SRC
 This will bring up a list of boards you have access to and get you to choose what board you want to run the command on.
+
 
 If you know that you are going be to running card-counter on the same board all the time, you can use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
 
@@ -125,9 +125,9 @@ set autoscale x
 plot for[col=2:3] "burndown.csv" u 1:col title columnheader(col) with lines
 #+END_EXAMPLE
 
-The ~burndown~ command requires ~-s~ (~--start~) and ~-e~ (~--end~) options to run. They represent the start and end dates you wish to generate the burndown chart for. These dates are formatted as the string "day-month-year" for example: "14-04-2020". Additionally, we'll pass in filter and board-id options. We'll save the output to a file and tell gnuplot to process it for us.
+The ~burndown~ command requires ~-s~ (~--start~) and ~-e~ (~--end~) options to run. They represent the start and end dates you wish to generate the burndown chart for. These dates are formatted as the string "year-month-day" for example: "2020-04-14". Additionally, we'll pass in filter and board-id options. We'll save the output to a file and tell gnuplot to process it for us.
 #+BEGIN_SRC bash
-card-counter burndown --board-id wtPNQDEV --start 01-04-2020 --end 14-04-2020 -f NoBurn > burndown.csv && gnuplot burndown.gp -p
+card-counter burndown --board-id wtPNQDEV --start 2020-04-01 --end 2020-04-14 -f NoBurn > burndown.csv && gnuplot burndown.gp -p
 #+END_SRC
 
 [[./images/burndown.png]]
