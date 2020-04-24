@@ -186,7 +186,7 @@ impl Database for Aws {
   ) -> Result<Option<Entries>> {
     let mut query_values: HashMap<String, AttributeValue> = HashMap::new();
     let query_string = match date_range {
-      Some(_) => "board_id = :board_id and time_stamp <= :end and time_stamp => :start".to_string(),
+      Some(_) => "board_id = :board_id AND time_stamp BETWEEN :start AND :end".to_string(),
       None => "board_id = :board_id ".to_string(),
     };
 
