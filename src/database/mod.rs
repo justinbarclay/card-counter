@@ -32,7 +32,8 @@ impl Default for DatabaseType {
 }
 
 fn select_date(keys: &[i64]) -> Option<i64> {
-  let items: Vec<String> = keys
+  let rev_keys: Vec<i64> = keys.into_iter().cloned().rev().collect();
+  let items: Vec<String> = rev_keys
     .iter()
     .map(|item| {
       NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0)
@@ -42,12 +43,13 @@ fn select_date(keys: &[i64]) -> Option<i64> {
     .collect();
 
   match Select::new()
-    .with_prompt("Select a date: ")
+    .with_prompt("Compare board with record at: ")
     .items(&items)
+    .paged(true)
     .default(0)
     .interact()
   {
-    Ok(index) => Some(keys[index]),
+    Ok(index) => Some(rev_keys[index]),
     Err(_) => None,
   }
 }

@@ -63,6 +63,7 @@ pub async fn select_board(auth: &Auth) -> Result<Board> {
     .with_prompt("Select a board: ")
     .items(&board_names)
     .default(0)
+    .paged(true)
     .interact()
     .chain_err(|| "There was an error while trying to select a board.")?;
 
