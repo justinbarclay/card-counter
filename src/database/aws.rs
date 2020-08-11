@@ -22,7 +22,7 @@ use rusoto_dynamodb::{
 
 use super::{config::Config, DateRange};
 
-use dialoguer::Confirmation;
+use dialoguer::Confirm;
 
 use std::collections::HashMap;
 
@@ -255,8 +255,8 @@ impl Aws {
     let table_exists = does_table_exist(&aws.client, "card-counter".to_string()).await?;
 
     if !table_exists {
-      match Confirmation::new()
-        .with_text(
+      match Confirm::new()
+        .with_prompt(
           "Unable to find \"card-counter\" table in DynamoDB. Would you like to create a table?",
         )
         .interact()
