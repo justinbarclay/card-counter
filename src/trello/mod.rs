@@ -1,8 +1,9 @@
 /// Structures for serializing and de-serializing responses from Trello
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, env};
 
 use crate::errors::*;
-use std::collections::HashMap;
+
 // Unofficial struct to hold the key and token for working with the trello api
 #[derive(Clone, Debug)]
 pub struct Auth {
@@ -55,6 +56,35 @@ pub struct Card {
   #[serde(rename = "idList")]
   pub id_list: String,
 }
+
+pub fn auth_from_env() -> Option<Auth> {
+  let key: String = match env::var("TRELLO_API_KEY") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+      return None;
+    }
+  };
+
+  let token: String = match env::var("TRELLO_API_TOKEN") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+      return None;
+    }
+  };
+
+  if key.is_empty() {
+    eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+    return None;
+  }
+  if token.is_empty() {
+    eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+    return None;
+  }
+  Some(Auth { key, token })
+}
+
 // Adds formatting to error message if getting a 401 from the api
 pub fn no_authentication(auth: &Auth, response: &reqwest::Response) -> Result<()> {
   if let Err(err) = response.error_for_status_ref() {

@@ -4,16 +4,16 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, time::SystemTime, fmt, cmp::Ordering};
+use std::{cmp::Ordering, convert::TryInto, fmt, time::SystemTime};
 
 pub mod aws;
 pub mod config;
 pub mod json;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum DatabaseType{
+pub enum DatabaseType {
   Aws,
-  Local
+  Local,
 }
 
 impl fmt::Display for DatabaseType {
