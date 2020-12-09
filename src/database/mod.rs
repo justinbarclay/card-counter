@@ -118,7 +118,7 @@ impl Entry {
     self
       .decks
       .iter()
-      .fold((0, 0), |(incomplete, complete), deck| {
+      .fold((0, 0), |(incomplete, complete), deck| -> (i32, i32) {
         if filter.is_some() && deck.list_name.contains(filter.unwrap()) {
           (incomplete, complete)
         } else if deck.list_name.contains("Done") {
@@ -130,17 +130,36 @@ impl Entry {
   }
 }
 pub fn format_to_burndown(entries: Vec<Entry>, filter: Option<&str>) -> Vec<String> {
-  let burndown = entries.iter().map(|entry| {
-    let (incomplete, complete) = entry.calculate_burndown(filter);
+  let mut entries = entries.to_vec();
+
+  // In some cases, there are going to be multiple entries for a
+  // single days when building a burndown chart, we want to use the
+  // last entry in that day
+  entries.sort();
+  let mut burndown: Vec<(String, i32, i32)> = Vec::new();
+  for entry in entries {
     let time = NaiveDateTime::from_timestamp(entry.time_stamp, 0)
       .format("%d-%m-%Y")
       .to_string();
-    format!("{},{},{}", time, incomplete, complete)
-  });
+    let (incomplete, complete) = entry.calculate_burndown(filter);
+
+    // Remove duplicate entry
+    if let Some(entry) = burndown.last() {
+      if entry.0 == time {
+          burndown.pop();
+      }
+    }
+
+    burndown.push((time, incomplete, complete));
+  };
+
 
   //TODO: Make immutable
   let mut output = vec!["Date,Incomplete,Complete".to_string()];
-  output.extend(burndown);
+  output.extend(
+    burndown.iter().map(|(time, incomplete, complete)|{
+      format!("{},{},{}", time, incomplete, complete)
+    }));
   output
 }
 impl Default for Entry {
