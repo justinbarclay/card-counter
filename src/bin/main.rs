@@ -6,7 +6,7 @@ use clap::{App, Arg};
 
 use card_counter::{
   commands::Command,
-  database::{aws::Aws, config::Config, json::JSON, Database, DatabaseType, Entry},
+  database::{aws::Aws, azure::Azure, config::Config, json::JSON, Database, DatabaseType, Entry},
   errors::Result,
 };
 
@@ -47,7 +47,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
         .long("database")
         .value_name("DATABASE")
         .help("Choose the database you want to save current request in")
-        .possible_values(&["local", "aws"])
+        .possible_values(&["local", "aws", "azure"])
         .takes_value(true),
     )
     .arg(
@@ -59,6 +59,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
     .subcommand(
       clap::SubCommand::with_name("config").about("Edit properties associated with card-counter."),
     )
+    .subcommand(clap::SubCommand::with_name("test").about("A way to quickly test out code."))
     .subcommand(
       clap::SubCommand::with_name("burndown")
         .about("Parses data for a board and prints out data to be piped to gnuplot")
@@ -93,7 +94,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .value_name("DATABASE")
             .default_value("local")
             .help("Choose the database you want to save current request in")
-            .possible_values(&["local", "aws"])
+            .possible_values(&["local", "aws", "azure"])
             .takes_value(true),
         )
         .arg(
@@ -119,6 +120,11 @@ async fn run() -> Result<()> {
     std::process::exit(0)
   }
 
+  if matches.subcommand_matches("test").is_some() {
+    Command::test().await?;
+    std::process::exit(0)
+  }
+
   // Counting cards or generating burndown charts requires access to both Trello
   // and the database. So we've split those two commands into a separate if/else
   // block
@@ -127,8 +133,12 @@ async fn run() -> Result<()> {
     None => std::process::exit(1),
   };
 
-  let database: Box<dyn Database> = match Command::check_for_database(matches.value_of("database"))? {
+  // TODO refactor database checking into each command,
+  // the command can worry about if and when to open or verify database connection
+  let database: Box<dyn Database> = match Command::check_for_database(matches.value_of("database"))?
+  {
     DatabaseType::Aws => Box::new(Aws::init(&Config::from_file_or_default()?).await?),
+    DatabaseType::Azure => Box::new(Azure::init(&Config::from_file_or_default()?).await?),
     DatabaseType::Local => Box::new(JSON::init()?),
   };
 

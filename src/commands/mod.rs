@@ -1,4 +1,5 @@
 use crate::{
+  database::azure::Azure,
   database::{
     config::Config, format_to_burndown, get_decks_by_date, Database, DatabaseType, DateRange, Entry,
   },
@@ -18,13 +19,14 @@ impl Command {
       None => match database {
         Some("aws") => Ok(DatabaseType::Aws),
         Some("local") => Ok(DatabaseType::Local),
+        Some("azure") => Ok(DatabaseType::Azure),
         Some(some) => {
           println!(
             "Unable to find database for {}. Using local database instead",
             some
           );
           Ok(DatabaseType::Local)
-        },
+        }
         None => {
           println!("No database chosen, defaulting to local.");
           Ok(DatabaseType::Local)
@@ -88,6 +90,49 @@ impl Command {
     let filter = matches.value_of("filter");
     let entries: Vec<Entry> = client.query_entries(board.id, Some(range)).await?.unwrap();
     println!("{}", format_to_burndown(entries, filter).join("\n"));
+    Ok(())
+  }
+
+  pub async fn test() -> Result<()> {
+    let config = Config::from_file()?;
+    let azure = Azure::init(&config.unwrap()).await?;
+    let entry = Entry {
+      board_id: "244zf".to_string(),
+      time_stamp: 2,
+      decks: vec![Deck {
+        list_name: "Test".to_string(),
+        size: 10,
+        score: 80,
+        unscored: 0,
+        estimated: 80,
+      }],
+    };
+    // azure.add_entry(entry.clone()).await?;
+    if let Some(entries) = azure.all_entries().await? {
+      let entry = entries.first().unwrap();
+      let query_entry = azure
+        .get_entry(entry.clone().board_id, entry.time_stamp)
+        .await?;
+      println!("{:?}", query_entry.clone().unwrap());
+      assert_eq!(entry, &query_entry.unwrap());
+    }
+
+    println!(
+      "{:?}",
+      azure.query_entries(entry.clone().board_id, None).await?
+    );
+    println!(
+      "{:?}",
+      azure
+        .query_entries(
+          entry.clone().board_id,
+          Some(DateRange {
+            start: 2i64,
+            end: 3i64
+          })
+        )
+        .await?
+    );
     Ok(())
   }
 }

@@ -38,22 +38,68 @@ pub struct AWS {
   region: String,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+
+pub struct Azure {
+  cosmos_master_key: String,
+  cosmos_account: String,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct DatabaseConfig {
+  pub database_name: Option<String>,
+  pub container_name: Option<String>,
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
   pub trello: Trello,
-  pub aws: Option<AWS>,
+  // We don't have azure config option because we get aws auth from standard aws sources.
+  pub azure: Option<Azure>,
   #[serde(default)]
   pub database: DatabaseType,
+  pub database_configuration: Option<DatabaseConfig>,
 }
 
 impl Default for Config {
   fn default() -> Config {
     Config {
       trello: Trello::default(),
-      aws: None,
+      azure: None,
       database: DatabaseType::default(),
+      database_configuration: None,
     }
   }
+}
+
+fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseConfig> {
+  let _current_config = current_config.unwrap_or(Default::default());
+  let database_name = Input::<String>::new()
+    .with_prompt("Database Name")
+    .default(
+      _current_config
+        .database_name
+        .unwrap_or("card-counter".to_string())
+        .clone(),
+    )
+    .interact()
+    .ok();
+
+  let container_name = Input::<String>::new()
+    .with_prompt("Container Name")
+    .default(
+      _current_config
+        .container_name
+        .unwrap_or("card-counter".to_string())
+        .clone(),
+    )
+    .interact()
+    .ok();
+
+  Some(DatabaseConfig {
+    database_name,
+    container_name,
+  })
 }
 
 fn trello_details(trello: &Trello) -> Result<Trello> {
@@ -112,7 +158,11 @@ fn aws_details(aws: Option<AWS>) -> Result<AWS> {
 }
 
 fn database_preference() -> Result<DatabaseType> {
-  let preferences = [DatabaseType::Local, DatabaseType::Aws];
+  let preferences = [
+    DatabaseType::Local,
+    DatabaseType::Aws,   /*, DatabaseType::Azure */
+    DatabaseType::Azure, /*, DatabaseType::Azure */
+  ];
   let index = Select::new()
     .with_prompt("What database would you prefer?")
     .items(&preferences)
@@ -160,7 +210,10 @@ impl Config {
     let trello = trello_details(&self.trello)?;
     self.trello = trello;
     self.database = database_preference()?;
-    // self.aws = Some(aws_details(self.aws)?);
+    if self.database == DatabaseType::Azure {
+      println!("What are your Cosmos database and container names?");
+      self.database_configuration = database_details(self.database_configuration);
+    }
     Ok(self)
   }
 
@@ -173,10 +226,10 @@ impl Config {
 
     writer
       .seek(SeekFrom::Start(0))
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
+      .chain_err(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
     writer
       .write_all(json.as_bytes())
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/config.yaml")?;
+      .chain_err(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
     Ok(())
   }
 
@@ -196,19 +249,6 @@ impl Config {
     Auth {
       key: self.trello.key,
       token: self.trello.token,
-    }
-  }
-  #[allow(dead_code)]
-  pub fn aws_auth(self) -> Auth {
-    match self.aws {
-      Some(aws) => Auth {
-        key: aws.secret_access_key,
-        token: aws.access_key_id,
-      },
-      None => Auth {
-        key: "".to_string(),
-        token: "".to_string(),
-      },
     }
   }
 }

@@ -7,13 +7,15 @@ use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto, fmt, time::SystemTime};
 
 pub mod aws;
+pub mod azure;
 pub mod config;
 pub mod json;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub enum DatabaseType {
   Aws,
   Local,
+  Azure,
 }
 
 impl fmt::Display for DatabaseType {
@@ -21,6 +23,7 @@ impl fmt::Display for DatabaseType {
     match self {
       DatabaseType::Local => write!(f, "local"),
       DatabaseType::Aws => write!(f, "aws"),
+      DatabaseType::Azure => write!(f, "azure"),
     }
   }
 }
@@ -76,7 +79,7 @@ impl PartialOrd for Entry {
 
 impl PartialEq for Entry {
   fn eq(&self, other: &Self) -> bool {
-    self.time_stamp == other.time_stamp
+    self.time_stamp == other.time_stamp && self.board_id == other.board_id
   }
 }
 
@@ -129,6 +132,7 @@ impl Entry {
       })
   }
 }
+
 pub fn format_to_burndown(entries: Vec<Entry>, filter: Option<&str>) -> Vec<String> {
   let mut entries = entries.to_vec();
 
@@ -146,22 +150,23 @@ pub fn format_to_burndown(entries: Vec<Entry>, filter: Option<&str>) -> Vec<Stri
     // Remove duplicate entry
     if let Some(entry) = burndown.last() {
       if entry.0 == time {
-          burndown.pop();
+        burndown.pop();
       }
     }
 
     burndown.push((time, incomplete, complete));
-  };
-
+  }
 
   //TODO: Make immutable
   let mut output = vec!["Date,Incomplete,Complete".to_string()];
   output.extend(
-    burndown.iter().map(|(time, incomplete, complete)|{
-      format!("{},{},{}", time, incomplete, complete)
-    }));
+    burndown
+      .iter()
+      .map(|(time, incomplete, complete)| format!("{},{},{}", time, incomplete, complete)),
+  );
   output
 }
+
 impl Default for Entry {
   fn default() -> Self {
     Entry {
@@ -172,6 +177,7 @@ impl Default for Entry {
     }
   }
 }
+
 #[derive(Debug)]
 pub struct DateRange {
   pub start: i64,

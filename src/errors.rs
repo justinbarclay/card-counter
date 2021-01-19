@@ -1,5 +1,4 @@
 use crate::trello::Auth;
-
 // TODO: This is a big todo here, but we need to improve the error messaging
 // across our system to make it more accessible and guide the use to the right
 // action

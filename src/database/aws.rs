@@ -178,7 +178,7 @@ impl Database for Aws {
     }
   }
 
-  /// Returns a selection of Entries that match the board_id and optionally all entries with board_id and have a timestampe greater than time_stamp. It can return an error when prompting a user or when talking to DynamoDB.
+  /// Returns a selection of Entries that match the board_id and optionally all entries with board_id and have a timestamp greater than time_stamp. It can return an error when prompting a user or when talking to DynamoDB.
   async fn query_entries(
     &self,
     board_id: String,
