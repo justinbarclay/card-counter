@@ -26,7 +26,8 @@ hyper = "0.14.4"
 clap = "2.33.0"
 dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
 prettytable-rs = "0.8"
-plotters = "0.3.0"
+plotters = "^0.3.0"
+plotters-backend = "^0.3.0"
 
 # Serializers/Deserializers
 serde = { version = "1.0.106", features = ["derive"] }

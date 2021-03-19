@@ -104,6 +104,16 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .value_name("FILTER")
             .help("Filters out all lists with a name that contains the substring FILTER")
             .takes_value(true),
+        )
+        .arg(
+          Arg::with_name("output")
+            .short("o")
+            .long("output")
+            .value_name("OUTPUT")
+            .help("Filters out all lists with a name that contains the substring FILTER")
+            .possible_values(&["ascii", "svg", "csv"])
+            .default_value("csv")
+            .takes_value(true),
         ),
     )
     .get_matches()
@@ -121,7 +131,7 @@ async fn run() -> Result<()> {
   }
 
   if matches.subcommand_matches("test").is_some() {
-    Command::test().await?;
+    Command::test();
     std::process::exit(0)
   }
 

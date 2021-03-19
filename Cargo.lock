@@ -242,6 +242,7 @@ dependencies = [
  "hyper 0.14.9",
  "hyper-tls 0.4.3",
  "plotters",
+ "plotters-backend",
  "prettytable-rs",
  "regex",
  "reqwest",

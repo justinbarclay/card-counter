@@ -10,3 +10,4 @@ pub mod trello;
 pub mod commands;
 pub mod database;
 pub mod errors;
+pub mod util;
