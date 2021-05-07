@@ -52,18 +52,19 @@ impl PixelState {
 
 pub struct TextDrawingBackend {
   size: (u32, u32),
-  buffer: Vec<PixelState>
+  buffer: Vec<PixelState>,
 }
 
 impl TextDrawingBackend {
-  pub fn new(size: (u32, u32)) -> Self{
-    let buffer_size = (size.0 * size.1) as usize;
-   TextDrawingBackend{
-     size,
-     buffer: vec![PixelState::Empty; buffer_size]
-   }
+  pub fn init(length: u32, height: u32) -> Self {
+    let buffer_size = (length * height) as usize;
+    TextDrawingBackend {
+      size: (length, height),
+      buffer: vec![PixelState::Empty; buffer_size],
+    }
   }
 }
+
 impl DrawingBackend for TextDrawingBackend {
   type ErrorType = std::io::Error;
 
@@ -76,10 +77,12 @@ impl DrawingBackend for TextDrawingBackend {
   }
 
   fn present(&mut self) -> Result<(), DrawingErrorKind<std::io::Error>> {
-    for r in 0..30 {
+    println!("Length: {}, Width: {}", self.size.0, self.size.1);
+    let scale = scaling_factor() as u32;
+    for row in 0..self.size.1 {
       let mut buf = String::new();
-      for c in 0..100 {
-        buf.push(self.buffer[r * 100 + c].to_char());
+      for col in 0..self.size.0 {
+        buf.push(self.buffer[(row * scale + col) as usize].to_char());
       }
       println!("{}", buf);
     }
@@ -93,7 +96,7 @@ impl DrawingBackend for TextDrawingBackend {
     color: BackendColor,
   ) -> Result<(), DrawingErrorKind<std::io::Error>> {
     if color.alpha > 0.3 {
-      self.buffer[(pos.1 * 100 + pos.0) as usize].update(PixelState::Pixel);
+      self.buffer[(pos.1 * scaling_factor() + pos.0) as usize].update(PixelState::Pixel);
     }
     Ok(())
   }
@@ -109,7 +112,7 @@ impl DrawingBackend for TextDrawingBackend {
       let y0 = from.1.min(to.1);
       let y1 = from.1.max(to.1);
       for y in y0..y1 {
-        self.buffer[(y * 100 + x) as usize].update(PixelState::VLine);
+        self.buffer[(y * scaling_factor() + x) as usize].update(PixelState::VLine);
       }
       return Ok(());
     }
@@ -119,7 +122,7 @@ impl DrawingBackend for TextDrawingBackend {
       let x0 = from.0.min(to.0);
       let x1 = from.0.max(to.0);
       for x in x0..x1 {
-        self.buffer[(y * 100 + x) as usize].update(PixelState::HLine);
+        self.buffer[(y * scaling_factor() + x) as usize].update(PixelState::HLine);
       }
       return Ok(());
     }
@@ -153,10 +156,14 @@ impl DrawingBackend for TextDrawingBackend {
       VPos::Center => -height / 2,
       VPos::Bottom => -height,
     };
-    let offset = (pos.1 + dy).max(0) * 100 + (pos.0 + dx).max(0);
+    let offset = (pos.1 + dy).max(0) * scaling_factor() + (pos.0 + dx).max(0);
     for (idx, chr) in (offset..).zip(text.chars()) {
       self.buffer[idx as usize].update(PixelState::Text(chr));
     }
     Ok(())
   }
+}
+
+pub fn scaling_factor() -> i32 {
+  200
 }
