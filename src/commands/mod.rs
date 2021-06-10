@@ -94,7 +94,6 @@ impl Command {
     let burndown = Burndown::calculate_burndown(&entries, &filter);
     match matches.value_of("output") {
       Some("ascii") => burndown.as_ascii().unwrap(),
-      Some("svg") => burndown.as_svg().unwrap(),
       Some("csv") => println!("{}", burndown.as_csv().join("\n")),
       Some(option) => println!("Output option {} not supported", option),
       None => println!("{}", burndown.as_csv().join("\n")),

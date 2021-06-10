@@ -1,15 +1,10 @@
 use core::fmt;
-use std::fs::File;
 
-use crate::{
-  database::Entry,
-  util::{PixelState, TextDrawingBackend},
-};
+use crate::database::Entry;
 
 use pointplots::{Chart, PixelColor, Plot, Point, Shape};
 
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use plotters::{prelude::*, style};
 
 #[derive(Clone)]
 struct Timestamp(f64);
@@ -117,50 +112,6 @@ impl Burndown {
     output
   }
 
-  pub fn as_svg(&self) -> Result<(), ()> {
-    let root_area = SVGBackend::new("images/burndown.svg", (600, 400)).into_drawing_area();
-    root_area.fill(&style::WHITE).unwrap();
-
-    let start_date = self.0.first().unwrap().0;
-    let end_date = self.0.last().unwrap().0;
-    let max_completed = self
-      .0
-      .iter()
-      .map(|(_, completed, _)| completed)
-      .max()
-      .unwrap();
-    let mut ctx = ChartBuilder::on(&root_area)
-      .set_label_area_size(LabelAreaPosition::Left, 40)
-      .set_label_area_size(LabelAreaPosition::Bottom, 40)
-      .caption("Burndown Chart", ("sans-serif", 40))
-      .build_cartesian_2d(start_date..end_date, 0..*max_completed)
-      .unwrap();
-
-    ctx.configure_mesh().draw().unwrap();
-
-    ctx
-      .draw_series(LineSeries::new(
-        self
-          .0
-          .iter()
-          .map(|(date, completed, _)| (*date, *completed)),
-        &style::BLUE,
-      ))
-      .unwrap();
-
-    ctx
-      .draw_series(LineSeries::new(
-        self
-          .0
-          .iter()
-          .map(|(date, _, incomplete)| (*date, *incomplete)),
-        &style::RED,
-      ))
-      .unwrap();
-
-    Ok(())
-  }
-
   pub fn as_ascii(&self) -> Result<(), ()> {
     let start_date: DateTime<Utc> = self.0.first().unwrap().0;
     let end_date: DateTime<Utc> = self.0.last().unwrap().0;
@@ -182,118 +133,51 @@ impl Burndown {
     let max = max_complete.max(max_incomplete) as f64;
     println!("Max: {}", max);
 
-    let incomplete: Vec<Point<Timestamp, f64>> =
-      self
-        .0
-        .iter()
-        .map(|(date, incompleted, _)| -> Point<Timestamp, f64> {
-          {
-            Point {
-              x: date.to_owned().into(),
-              y: incompleted.clone() as f64,
-            }
+    let incomplete: Vec<Point<Timestamp, f64>> = self
+      .0
+      .iter()
+      .map(|(date, incompleted, _)| -> Point<Timestamp, f64> {
+        {
+          Point {
+            x: date.to_owned().into(),
+            y: incompleted.clone() as f64,
           }
-        }).collect();
+        }
+      })
+      .collect();
 
-    let complete: Vec<Point<Timestamp, f64>> =
-      self
-        .0
-        .iter()
-        .map(|(date, _, complete)| -> Point<Timestamp, f64> {
-          {
-            Point {
-              x: date.to_owned().into(),
-              y: complete.clone() as f64,
-            }
+    let complete: Vec<Point<Timestamp, f64>> = self
+      .0
+      .iter()
+      .map(|(date, _, complete)| -> Point<Timestamp, f64> {
+        {
+          Point {
+            x: date.to_owned().into(),
+            y: complete.clone() as f64,
           }
-        }).collect();
+        }
+      })
+      .collect();
 
     println!("\nBurndown Chart\n");
-    Chart::new(120, 60, start_date.timestamp() as f64, end_date.timestamp() as f64)
-      .lineplot_with_tags(&Shape::Lines(&complete), Some("Complete".to_string()), PixelColor::Blue)
-      .lineplot_with_tags(&Shape::Lines(&incomplete), Some("Incomplete".to_string()), PixelColor::Red)
-      .display();
-
-    Ok(())
-  }
-
-  pub fn test() -> Result<(), ()> {
-    test_chart().unwrap();
-    Ok(())
-  }
-}
-
-fn test_chart() -> Result<(), ()> {
-  let incomplete = File::open("test.json").unwrap();
-  let complete = File::open("test2.json").unwrap();
-
-  let completed: Vec<(DateTime<Utc>, f64)> = serde_json::from_reader(complete).unwrap();
-  let incompleted: Vec<(DateTime<Utc>, f64)> = serde_json::from_reader(incomplete).unwrap();
-
-  let min = completed.first().unwrap().0.timestamp() as f64;
-  let max = completed.last().unwrap().0.timestamp() as f64;
-  let complete_points: Vec<Point<Timestamp, f64>> = completed
-    .into_iter()
-    .map(|(x, y)| -> Point<Timestamp, f64> {
-      Point {
-        x: x.into(),
-        y: y.clone(),
-      }
-    })
-    .collect();
-
-  let incomplete_points: Vec<Point<Timestamp, f64>> = incompleted
-    .into_iter()
-    .map(|(x, y)| -> Point<Timestamp, f64> {
-      Point {
-        x: x.into(),
-        y: y.clone(),
-      }
-    })
-    .collect();
-  println!("\nMean Monthly Temperature in Edmonton, Alberta\n");
-  Chart::new(120, 60, min, max)
-    .lineplot_with_tags(&Shape::Lines(&complete_points), None, PixelColor::Blue)
-    .lineplot_with_tags(&Shape::Lines(&incomplete_points), None, PixelColor::Red)
+    Chart::new(
+      120,
+      60,
+      start_date.timestamp() as f64,
+      end_date.timestamp() as f64,
+    )
+    .lineplot_with_tags(
+      &Shape::Lines(&complete),
+      Some("Complete".to_string()),
+      PixelColor::Blue,
+    )
+    .lineplot_with_tags(
+      &Shape::Lines(&incomplete),
+      Some("Incomplete".to_string()),
+      PixelColor::Red,
+    )
     .display();
 
-  Ok(())
-}
-
-fn test_plotters_chart<DB: DrawingBackend>(
-  b: DrawingArea<DB, plotters::coord::Shift>,
-) -> Result<(), ()> {
-  let complete = File::open("test.json").unwrap();
-  let incomplete = File::open("test2.json").unwrap();
-
-  let completed: Vec<(DateTime<Utc>, i32)> = serde_json::from_reader(complete).unwrap();
-  let incompleted: Vec<(DateTime<Utc>, i32)> = serde_json::from_reader(incomplete).unwrap();
-  let date_range = completed.first().unwrap().0..completed.last().unwrap().0;
-  println!("Range: {:?}", date_range);
-  let mut chart = ChartBuilder::on(&b)
-    .margin(1)
-    .caption("Burndown", ("sans-serif", (10).percent_height()))
-    .set_label_area_size(LabelAreaPosition::Left, (10i32).percent_width())
-    .set_label_area_size(LabelAreaPosition::Bottom, (10i32).percent_height())
-    .build_cartesian_2d(date_range, 0..100)
-    .unwrap();
-
-  chart
-    .configure_mesh()
-    .disable_x_mesh()
-    .disable_y_mesh()
-    .draw()
-    .unwrap();
-
-  chart
-    .draw_series(LineSeries::new(completed.into_iter(), &RED))
-    .unwrap();
-
-  chart
-    .draw_series(LineSeries::new(incompleted.into_iter(), &RED))
-    .unwrap();
-
-  b.present().unwrap();
-
-  Ok(())
+    Ok(())
+  }
 }

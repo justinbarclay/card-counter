@@ -24,13 +24,10 @@ hyper-tls = "0.4.3"
 hyper = "0.14.4"
 
 # TUI
-
 clap = "2.33.0"
 dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
 prettytable-rs = "0.8"
 pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git", rev = "a756107"}
-plotters = "^0.3.0"
-plotters-backend = "^0.3.0"
 
 # Serializers/Deserializers
 serde = { version = "1.0.106", features = ["derive"] }
