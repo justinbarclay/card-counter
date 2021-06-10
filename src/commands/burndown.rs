@@ -38,18 +38,18 @@ impl Entry {
   /// Calculates a Deck's total score based on the score of the list done vs the other lists.
   /// Ex:
   /// ```
-  /// use crate::{database::Entry, score::Deck};
+  /// use card_counter::{database::Entry, score::Deck};
   /// let entry = Entry {
-  ///       board_id: "board-id-1",
+  ///       board_id: "board-id-1".to_string(),
   ///       time_stamp: 1,
   ///       decks: vec![
-  ///         Deck {list_name: "listA", size: 5, score: 20, unscored: 0, estimated: 20 },
-  ///         Deck {list_name: "listB", size: 5, score: 20, unscored: 0, estimated: 20 },
-  ///         Deck {list_name: "Done", size: 10, score: 40, unscored: 0, estimated: 40 }
+  ///         Deck {list_name: "listA".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "listB".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "Done".to_string(), size: 10, score: 40, unscored: 0, estimated: 40 }
   ///       ],
   ///   };
   ///
-  /// assert((20, 20), entry.calculate_score(None));
+  /// assert_eq!((40, 40), entry.calculate_score(&None));
   /// ```
   pub fn calculate_score(&self, filter: &Option<&str>) -> (i32, i32) {
     self
@@ -67,12 +67,40 @@ impl Entry {
   }
 }
 
-pub struct Burndown(Vec<(DateTime<Utc>, i32, i32)>);
+#[derive(Debug, PartialEq)]
+pub struct Burndown(pub Vec<(DateTime<Utc>, i32, i32)>);
 
 impl Burndown {
   /// Aggregates the score of a set of entries into a list of 3-tuples
-  /// of [("dd-mm-yyyy", i32, i32)...] for ease of in rendering
-  /// content to a human useable form.
+  /// of [("dd-mm-yyyy", i32, i32)...] for ease in rendering content
+  /// to a human useable form.
+  /// Ex:
+  /// ```
+  /// use card_counter::{database::Entry, score::Deck, commands::burndown::Burndown};
+  /// use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+  /// let entry = Entry {
+  ///       board_id: "board-id-1".to_string(),
+  ///       time_stamp: 1,
+  ///       decks: vec![
+  ///         Deck {list_name: "listA".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "listB".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "Done".to_string(), size: 10, score: 40, unscored: 0, estimated: 40 }
+  ///       ],
+  ///   };
+  /// let entry2 = Entry {
+  ///       board_id: "board-id-1".to_string(),
+  ///       time_stamp: 86401,
+  ///       decks: vec![
+  ///         Deck {list_name: "listA".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "listB".to_string(), size: 5, score: 10, unscored: 0, estimated: 10 },
+  ///         Deck {list_name: "Done".to_string(), size: 10, score: 50, unscored: 0, estimated: 50 }
+  ///       ],
+  ///   };
+  /// let entries = vec![entry, entry2];
+  /// let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1, 0), Utc);
+  /// let timestamp2 = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(86401, 0), Utc);
+  /// assert_eq!(vec![(timestamp, 40, 40), (timestamp2, 30, 50)], Burndown::calculate_burndown(&entries, &None).0);
+  /// ```
   pub fn calculate_burndown(entries: &[Entry], filter: &Option<&str>) -> Self {
     let mut entries = entries.to_vec();
 
@@ -98,6 +126,33 @@ impl Burndown {
     Burndown(burndown)
   }
 
+  /// Formats a Burndown struct as a vector of csv, with the first row being the header row.
+  /// Ex:
+  /// ```
+  /// use card_counter::{database::Entry, score::Deck, commands::burndown::Burndown};
+  /// use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+  /// let entry = Entry {
+  ///       board_id: "board-id-1".to_string(),
+  ///       time_stamp: 1,
+  ///       decks: vec![
+  ///         Deck {list_name: "listA".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "listB".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "Done".to_string(), size: 10, score: 40, unscored: 0, estimated: 40 }
+  ///       ],
+  ///   };
+  /// let entry2 = Entry {
+  ///       board_id: "board-id-1".to_string(),
+  ///       time_stamp: 86401,
+  ///       decks: vec![
+  ///         Deck {list_name: "listA".to_string(), size: 5, score: 20, unscored: 0, estimated: 20 },
+  ///         Deck {list_name: "listB".to_string(), size: 5, score: 10, unscored: 0, estimated: 10 },
+  ///         Deck {list_name: "Done".to_string(), size: 10, score: 50, unscored: 0, estimated: 50 }
+  ///       ],
+  ///   };
+  /// let entries = vec![entry, entry2];
+  /// let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1, 0), Utc);
+  /// let timestamp2 = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(86401, 0), Utc);
+  /// assert_eq!(vec!["Date,Incomplete,Complete", "01-01-1970,40,40", "02-01-1970,30,50"], Burndown::calculate_burndown(&entries, &None).as_csv());
   pub fn as_csv(&self) -> Vec<String> {
     let mut output = vec!["Date,Incomplete,Complete".to_string()];
     output.extend(self.0.iter().map(|(time, incomplete, complete)| {
