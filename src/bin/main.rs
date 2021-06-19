@@ -59,7 +59,6 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
     .subcommand(
       clap::SubCommand::with_name("config").about("Edit properties associated with card-counter."),
     )
-    .subcommand(clap::SubCommand::with_name("test").about("A way to quickly test out code."))
     .subcommand(
       clap::SubCommand::with_name("burndown")
         .about("Parses data for a board and prints out data to be piped to gnuplot")
@@ -111,7 +110,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .long("output")
             .value_name("OUTPUT")
             .help("Filters out all lists with a name that contains the substring FILTER")
-            .possible_values(&["ascii", "svg", "csv"])
+            .possible_values(&["ascii", "csv"])
             .default_value("csv")
             .takes_value(true),
         ),
@@ -127,11 +126,6 @@ async fn run() -> Result<()> {
   // Setting up config requires little access
   if matches.subcommand_matches("config").is_some() {
     Config::from_file_or_default()?.update_file()?;
-    std::process::exit(0)
-  }
-
-  if matches.subcommand_matches("test").is_some() {
-    Command::test();
     std::process::exit(0)
   }
 

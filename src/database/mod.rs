@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryInto, fmt, time::SystemTime};
 
 pub mod aws;
-// pub mod azure;
+pub mod azure;
 pub mod config;
 pub mod json;
 
