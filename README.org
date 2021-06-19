@@ -40,7 +40,7 @@ Great! You've got the theory down. I decree that you are an official agile scrum
 
 Finally, finally, we're ready to get started.
 ** Getting Started
-You can begin thinking about getting started with ~card-counter~ now. But before you can begin thinking about card-counter itself, however, you will need to take some steps to retrieve and save information from Trello:
+You can begin thinking about getting started with ~card-counter~ now. But before you can start thinking about card-counter itself, however, you will need to take some steps to retrieve and save information from Trello:
 
 1. Get your [[https://trello.com/app-key][API key]]
 2. Generate a Trello API token by going to ~https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>~
@@ -57,12 +57,12 @@ You can begin thinking about getting started with ~card-counter~ now. But before
 
 There! We're done thinking about getting started. card-counter now knows enough about you to start talking to the Trello API. 
 
-If you're curious about what information card-counter stores, you can find the config file and local database in ~$HOME/.card-counter/~. If you have privacy concerns about what card-counter is doing with your information, don't worry about it. card-counter pulls down your information from the Trello API, processes it, and stores it all locally on your machine.
+If you're curious about what information card-counter stores, you can find the config file and local database in ~$HOME/.card-counter/~. If you have privacy concerns about what card-counter is doing with your information, don't worry about it. card-counter pulls down your data from the Trello API, processes it, and stores it all locally on your machine.
 ** Setting up Trello
 *** What's the point?
 Now that you understand the theory, we are ready to set up our boards to be processed by card-counter. Luckily, preparing your board for card-counter is simple. You just put in some numbers and you are set. Ok, it's not quite that simple,  but it's close. 
 
-card-counter tracks the estimated and actual effort a card has taken. It does this by using numbers inside of parentheses -- ~()~ -- and square brackets -- ~[]~ -- within the card's title. If the title only has a number in parentheses, it acts as both the "actual" and "estimated" effort. However, if there are numbers in parentheses and in square brackets in the title, the number in the square brackets will count as the "actual" effort taken and the number in the parentheses will act as the "estimated" effort.  In short, numbers in square brackets are only counted as corrective numbers.
+card-counter tracks the estimated and actual effort a card has taken. It does this by using numbers inside of parentheses -- ~()~ -- and square brackets -- ~[]~ -- within the card's title. If the title only has a number in parentheses, it acts as both the "actual" and "estimated" effort. However, suppose there are numbers in parentheses and in square brackets in the title. In that case, the number in the square brackets will count as the "actual" effort taken and the number in the parentheses will act as the "estimated" effort.  In short, numbers in square brackets are only counted as corrective numbers.
 
 It's hard to see what this means so let's walk through an example:
 
@@ -74,7 +74,7 @@ If Sally ran ~card-counter~, it would report:
 | This Sprint |     1 |     2 |         2 |       0 |
 
 
-After completing the task, Sally had learned that card-counter's docs were in a much graver state than she had estimated. She updates the card's title to "(2)[4] Write docs for card-counter".
+After completing the task, Sally had learned that card-counter's docs were in a much graver state than she had estimated. So she updates the card's title to "(2)[4] Write docs for card-counter".
 
 Now, if Sally ran ~card-counter~, it would report:
 
@@ -97,7 +97,7 @@ card-counter
 This will bring up a list of boards you have access to and get you to choose what board you want to run the command on.
 
 
-If you know that you are going be to running card-counter on the same board all the time, you can use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
+If you know that you will be running card-counter on the same board all the time, you can use the ~-b~ (~--board-id~) option and set the ~board-id~. You can find the board-id in the URL for your board.
 
 A typical Trello board URL looks like:
 ~https://trello.com/b/<board-id>/<your-board>~
@@ -107,12 +107,12 @@ For example: if you want to use the Trello board-id for card-counter, https://tr
 card-counter --board-id wtPNQDEV 
 #+END_SRC
 
-If you have a board that is a little noisy, you can filter out lists that you don't want to track. You can do this by using the ~-f~ (~--filter~) option. If you add a substring to the list(s), such as [ignore], card-counter can filter out these lists for you. Be careful however, the filter option is case sensitive.
+If you have a board that is a little noisy, you can filter out lists that you don't want to track. You can do this by using the ~-f~ (~--filter~) option. If you add a substring to the list(s), such as [ignore], card-counter can filter out these lists for you. Be careful, however, the filter option is case sensitive.
 #+BEGIN_SRC bash
 card-counter --board-id wtPNQDEV --filter ignore
 #+END_SRC
 
-If you'd like to generate a burndown chart for your boss or because you like graphs, there is the ~burndown~ command. It will output comma separated values that you can feed to your graphing library of choice. For this example we'll have gnuplot generate a graph for us.
+If you'd like to generate a burndown chart for your boss or because you like graphs, there is the ~burndown~ command. It will output comma-separated values that you can feed to your graphing library of choice. For this example, we'll have gnuplot generate a graph for us.
 
 First, we'll need to set-up a [[http://www.gnuplot.info/documentation.html][gnuplot]] script to parse the data for us. Save the following example in a file titled "burndown.gp".
 #+NAME: burndown.gp
@@ -125,17 +125,17 @@ set autoscale x
 plot for[col=2:3] "burndown.csv" u 1:col title columnheader(col) with lines
 #+END_EXAMPLE
 
-The ~burndown~ command requires ~-s~ (~--start~) and ~-e~ (~--end~) options to run. They represent the start and end dates you wish to generate the burndown chart for. These dates are formatted as the string "year-month-day" for example: "2020-04-14". Additionally, we'll pass in filter and board-id options. We'll save the output to a file and tell gnuplot to process it for us.
+The ~burndown~ command requires ~-s~ (~--start~) and ~-e~ (~--end~) options to run. They represent the start and end dates you wish to generate the burndown chart. These dates are formatted as the string "year-month-day" for example: "2020-04-14". Additionally, we'll pass in filter and board-id options. Finally, we'll save the output to a file and tell gnuplot to process it for us.
 #+BEGIN_SRC bash
 card-counter burndown --board-id wtPNQDEV --start 2020-04-01 --end 2020-04-14 -f NoBurn > burndown.csv && gnuplot burndown.gp -p
 #+END_SRC
 
 [[./images/burndown.png]]
 ** "Advanced"
-Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's card-counter cloud edition! Where we allow you to store your data in DynamoDB.
-*** AWS DynamoDB
-To start with you'll need to ask your administrator to give you read/write access to DynamoDB. This process can take anywhere from 3 weeks to 4 months.
+Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's card-counter cloud edition! Where we allow you to store your data in DynamoDB or CosmosDB.
 
+To start with you'll need to ask your administrator to give you read/write access to Dynamo or Cosmos. This process can take anywhere from 3 weeks to 4 months.
+*** AWS DynamoDB
 **** Authentication
 Did you return with the correct AWS permissions? That's great! I'm assuming in the interceding 3 months that you've become familiar with the AWS CLI. If so, this suggests your credentials are set somewhere. You probably don't need to do anything. If you have rushed into this, and it is your first time using AWS, you can start reading [[https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html][Amazon's documentation]] to find out what you need to set.
 
@@ -190,6 +190,69 @@ resource "aws_dynamodb_table" "card-counter-table" {
 }
 #+END_SRC
  
+*** CosmosDB
+**** Authentication
+Did your administrator give you access? Bless their heart, they trusted you!
+
+Before card-counter can talk to the all mighty Azure we need you to set some environment variables:
+#+begin_src shell
+export COSMOS_ACCOUNT=<your azure account name>
+export COSMOS_MASTER_KEY=<what a tasteless name, but it's what Azure calls it and it goes here>
+#+end_src
+
+**** Configuring
+You can tell card-counter to use CosmosDB as the backend in two ways:
+
+1. As an option through the CLI
+  #+BEGIN_SRC bash
+  card-counter --database azure
+  #+END_SRC
+2. Select the ~azure~ option in your config file and set the database name and container name
+  #+BEGIN_SRC bash
+  card-counter config
+  #+END_SRC
+
+*** CosmosDB Database and Container
+Like with DynamoDB ~card-counter~ can create the CosmosDB for you, I mean, if you're lazy and trust me. If you don't trust me but are still kind of lazy, here's where I create [[https://github.com/justinbarclay/card-counter/blob/azure/src/database/azure.rs#L255][stuff]].
+
+But we all know you're a control freak and that you've fallen in love with IaaC, but have managed to stay away from the dreaded ARM templates. So let me throw more terraform in your lap to manage.
+#+NAME: CosmosDB Database Config
+#+begin_src terraform
+data "azurerm_cosmosdb_account" "example" {
+  name                = "tfex-cosmosdb-account"
+  resource_group_name = "tfex-cosmosdb-account-rg"
+}
+
+resource "azurerm_cosmosdb_sql_database" "example" {
+  name                = "card-counter"
+  resource_group_name = data.azurerm_cosmosdb_account.example.resource_group_name
+  account_name        = data.azurerm_cosmosdb_account.example.name
+  throughput          = 400
+}
+
+resource "azurerm_cosmosdb_sql_container" "example" {
+  name                  = "card-counter"
+  resource_group_name   = azurerm_cosmosdb_account.example.resource_group_name
+  account_name          = azurerm_cosmosdb_account.example.name
+  database_name         = azurerm_cosmosdb_sql_database.example.name
+  partition_key_path    = "/board_id"
+  partition_key_version = 1
+  throughput            = 400
+
+  indexing_policy {
+    indexing_mode = "Consistent"
+
+    included_path {
+      path = "/*"
+    }
+  }
+
+  unique_key {
+    paths = ["/board_id"]
+  }
+}
+#+end_src
+
 ** Build from source
 Don't trust the binaries I provided? I have an easy solution for you. Build it from source. (Easy if you already have rust and cargo installed)
 
@@ -200,4 +263,3 @@ cargo install --path .
 #+END_SRC
 
 _Fin_, finally.
-
