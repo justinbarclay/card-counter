@@ -1,14 +1,10 @@
-// TODO: Refactor Errors... soon
 use crate::{
   database::{config::Config, Database, Entries, Entry},
   score::Deck,
 };
-use azure_core::HttpClient;
 use azure_cosmos::prelude::{collection::*, *};
-use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
-use serde_json;
-use std::{borrow::Borrow, collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, env};
 
 /*
 Structures for serializing and de-serializing responses from Azure.
@@ -77,7 +73,8 @@ impl From<&CosmosEntry> for Entry {
 impl Database for Azure {
   async fn add_entry(&self, entry: Entry) -> Result<()> {
     let document = Document::new(CosmosEntry::from(entry));
-    let entry = self
+
+    self
       .client
       .clone()
       .into_database_client(self.database_name.clone())
@@ -191,10 +188,7 @@ impl Azure {
       Some(v) => v.clone(),
       None => "".to_string(),
     };
-    let client = reqwest::Client::builder()
-      .danger_accept_invalid_certs(true)
-      .build()?;
-    let http_client: Arc<dyn HttpClient> = Arc::new(client);
+
     let client = CosmosClient::new(account_name, auth_token, CosmosOptions::default());
 
     let database_details = config.database_configuration.as_ref().chain_err(|| "No details set for Azure database in config file. Please run 'card-counter config' to set database and container names.")?;

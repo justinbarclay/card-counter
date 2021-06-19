@@ -1,15 +1,17 @@
 use crate::{
-  database::azure::Azure,
-  database::{
-    config::Config, format_to_burndown, get_decks_by_date, Database, DatabaseType, DateRange, Entry,
-  },
+  // database::azure::Azure,
+  database::{config::Config, get_decks_by_date, Database, DatabaseType, DateRange, Entry},
   errors::Result,
   score::{build_decks, print_decks, print_delta, select_board, Deck},
   trello::{collect_cards, get_board, get_cards, get_lists, Auth, Board, Card},
 };
-
+use burndown::Burndown;
 use chrono::NaiveDateTime;
+
 use std::collections::HashMap;
+
+pub mod burndown;
+
 pub struct Command;
 
 impl Command {
@@ -89,50 +91,13 @@ impl Command {
     };
     let filter = matches.value_of("filter");
     let entries: Vec<Entry> = client.query_entries(board.id, Some(range)).await?.unwrap();
-    println!("{}", format_to_burndown(entries, filter).join("\n"));
-    Ok(())
-  }
-
-  pub async fn test() -> Result<()> {
-    let config = Config::from_file()?;
-    let azure = Azure::init(&config.unwrap()).await?;
-    let entry = Entry {
-      board_id: "244zf".to_string(),
-      time_stamp: 2,
-      decks: vec![Deck {
-        list_name: "Test".to_string(),
-        size: 10,
-        score: 80,
-        unscored: 0,
-        estimated: 80,
-      }],
-    };
-    // azure.add_entry(entry.clone()).await?;
-    if let Some(entries) = azure.all_entries().await? {
-      let entry = entries.first().unwrap();
-      let query_entry = azure
-        .get_entry(entry.clone().board_id, entry.time_stamp)
-        .await?;
-      println!("{:?}", query_entry.clone().unwrap());
-      assert_eq!(entry, &query_entry.unwrap());
+    let burndown = Burndown::calculate_burndown(&entries, &filter);
+    match matches.value_of("output") {
+      Some("ascii") => burndown.as_ascii().unwrap(),
+      Some("csv") => println!("{}", burndown.as_csv().join("\n")),
+      Some(option) => println!("Output option {} not supported", option),
+      None => println!("{}", burndown.as_csv().join("\n")),
     }
-
-    println!(
-      "{:?}",
-      azure.query_entries(entry.clone().board_id, None).await?
-    );
-    println!(
-      "{:?}",
-      azure
-        .query_entries(
-          entry.clone().board_id,
-          Some(DateRange {
-            start: 2i64,
-            end: 3i64
-          })
-        )
-        .await?
-    );
     Ok(())
   }
 }

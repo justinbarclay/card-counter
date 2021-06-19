@@ -107,7 +107,7 @@ pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {
 }
 
 impl Entry {
-  // Gets the current Unix timestampe
+  // Gets the current Unix timestamp
   pub fn get_current_timestamp() -> Result<i64> {
     Ok(
       SystemTime::now()
@@ -116,55 +116,6 @@ impl Entry {
         .as_secs() as i64,
     )
   }
-  //
-  pub fn calculate_burndown(&self, filter: Option<&str>) -> (i32, i32) {
-    self
-      .decks
-      .iter()
-      .fold((0, 0), |(incomplete, complete), deck| -> (i32, i32) {
-        if filter.is_some() && deck.list_name.contains(filter.unwrap()) {
-          (incomplete, complete)
-        } else if deck.list_name.contains("Done") {
-          (incomplete, complete + deck.score)
-        } else {
-          (incomplete + deck.score, complete)
-        }
-      })
-  }
-}
-
-pub fn format_to_burndown(entries: Vec<Entry>, filter: Option<&str>) -> Vec<String> {
-  let mut entries = entries.to_vec();
-
-  // In some cases, there are going to be multiple entries for a
-  // single days when building a burndown chart, we want to use the
-  // last entry in that day
-  entries.sort();
-  let mut burndown: Vec<(String, i32, i32)> = Vec::new();
-  for entry in entries {
-    let time = NaiveDateTime::from_timestamp(entry.time_stamp, 0)
-      .format("%d-%m-%Y")
-      .to_string();
-    let (incomplete, complete) = entry.calculate_burndown(filter);
-
-    // Remove duplicate entry
-    if let Some(entry) = burndown.last() {
-      if entry.0 == time {
-        burndown.pop();
-      }
-    }
-
-    burndown.push((time, incomplete, complete));
-  }
-
-  //TODO: Make immutable
-  let mut output = vec!["Date,Incomplete,Complete".to_string()];
-  output.extend(
-    burndown
-      .iter()
-      .map(|(time, incomplete, complete)| format!("{},{},{}", time, incomplete, complete)),
-  );
-  output
 }
 
 impl Default for Entry {
