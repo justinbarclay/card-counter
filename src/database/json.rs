@@ -91,7 +91,7 @@ impl Database for JSON {
   /// Updates or creates a local database and inserts the current set of decks as an entry
   ///  under board_id, given the current time stamp.
   /// Ex:
-  /// ```
+  /// ```ignore
   /// {
   ///   "56eab922556b7a05c2f3b25e": {
   ///     "1580111037": [
@@ -114,7 +114,9 @@ impl Database for JSON {
       }
       None => {
         let mut timestamps = HashMap::new();
-        timestamps.insert(entry.time_stamp, entry.decks);
+        timestamps
+          .insert(entry.time_stamp, entry.decks)
+          .chain_err(|| "Unable to add entry to JSON.")?;
         json.database.insert(entry.board_id, timestamps);
       }
     };

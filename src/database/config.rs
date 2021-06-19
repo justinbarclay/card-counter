@@ -1,15 +1,15 @@
 use std::io::prelude::*;
-use std::{
-  io::{BufReader, BufWriter, SeekFrom},
-};
+use std::io::{BufReader, BufWriter, SeekFrom};
 
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
 
-use crate::database::json::config_file;
-use crate::errors::*;
-use crate::trello::Auth;
 use super::DatabaseType;
+use crate::database::json::config_file;
+use crate::{
+  errors::*,
+  trello::{self, Auth},
+};
 
 // The possible values that trello accepts for token expiration times
 pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
@@ -146,6 +146,14 @@ impl Config {
     // No Sane default: If we can't parse as json, it might be recoverable and we don't
     // want to overwrite user data
     serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
+  }
+
+  // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
+  pub fn check_for_auth() -> Result<Option<Auth>> {
+    match Config::from_file()? {
+      Some(config) => Ok(Some(config.trello_auth())),
+      None => Ok(trello::auth_from_env()),
+    }
   }
 
   pub fn user_update_prompts(mut self) -> Result<Config> {
