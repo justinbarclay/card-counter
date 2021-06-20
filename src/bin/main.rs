@@ -75,6 +75,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .short("s")
             .long("start")
             .value_name("START-DATE")
+            .required(true)
             .help("Start of the Date Range for the Burndown Chart (yyyy-mm-dd)")
             .takes_value(true),
         )
@@ -83,6 +84,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .short("e")
             .long("end")
             .value_name("END-DATE")
+            .required(true)
             .help("End of the Date Range for the Burndown Chart (yyyy-mm-dd)")
             .takes_value(true),
         )

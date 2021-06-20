@@ -178,7 +178,6 @@ impl Azure {
   // I _hate_ this method. But ErrorChain is not working so it's hard
   // to have things flow nicely right now.
   pub async fn init(config: &Config) -> Result<Self> {
-    println!("Azure");
     let auth = auth_from_env().chain_err(|| "Unable to find Azure Master Key")?;
     let auth_token = permission::AuthorizationToken::primary_from_base64(
       auth.get("COSMOS_MASTER_KEY").unwrap_or(&"".to_string()),
