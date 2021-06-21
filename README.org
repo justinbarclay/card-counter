@@ -213,7 +213,7 @@ You can tell card-counter to use CosmosDB as the backend in two ways:
   #+END_SRC
 
 *** CosmosDB Database and Container
-Like with DynamoDB ~card-counter~ can create the CosmosDB for you, I mean, if you're lazy and trust me. If you don't trust me but are still kind of lazy, here's where I create [[https://github.com/justinbarclay/card-counter/blob/azure/src/database/azure.rs#L255][stuff]].
+Like with DynamoDB ~card-counter~ can create the CosmosDB for you, I mean, if you're lazy and trust me. If you don't trust me but are still kind of lazy, here's where I create [[https://github.com/justinbarclay/card-counter/blob/main/src/database/azure.rs#L255][stuff]].
 
 But we all know you're a control freak and that you've fallen in love with IaaC, but have managed to stay away from the dreaded ARM templates. So let me throw more terraform in your lap to manage.
 #+NAME: CosmosDB Database Config
@@ -262,4 +262,4 @@ cd card-counter
 cargo install --path .
 #+END_SRC
 
-_Fin_, finally.
+/Fin/, finally.
