@@ -19,22 +19,7 @@ pub struct Board {
 
   pub desc: String,
 
-  pub closed: Option<bool>,
-
-  #[serde(rename = "idOrganization")]
-  pub id_organization: Option<String>,
-
-  pub pinned: Option<bool>,
-
   pub url: String,
-
-  #[serde(rename = "shortUrl")]
-  pub short_url: String,
-
-  pub starred: Option<bool>,
-
-  #[serde(rename = "enterpriseOwned")]
-  pub enterprise_owned: Option<bool>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
