@@ -85,7 +85,7 @@ impl PartialEq for Entry {
 
 impl Eq for Entry {}
 
-type Entries = Vec<Entry>;
+pub type Entries = Vec<Entry>;
 
 // Given a board, the user will be prompted to select an entry based on their timestamps. This can error based on generating prompts to a user.
 pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {

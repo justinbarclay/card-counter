@@ -1,7 +1,5 @@
 // File for retrieving cards from trello and scoring them
-use crate::errors::*;
-use crate::trello::{Auth, Board, Card, List};
-use dialoguer::Select;
+use crate::trello::{Card, List};
 use prettytable::Table;
 use regex::Captures;
 use regex::Regex;
@@ -27,47 +25,8 @@ pub struct Deck {
 /// a correction `[]` after they've completed the card and found out it was worth more or less effort.
 #[derive(PartialEq, Debug)]
 pub struct Score {
-  estimated: Option<i32>,
-  correction: Option<i32>,
-}
-
-/// Allows the user to select a board from a list
-pub async fn select_board(auth: &Auth) -> Result<Board> {
-  let client = reqwest::Client::new();
-
-  // Getting all the boards
-  let response = client
-    .get(&format!(
-      "https://api.trello.com/1/members/me/boards?key={}&token={}",
-      auth.key, auth.token
-    ))
-    .send()
-    .await?;
-
-  // TODO: Handle this better
-  // maybe create a custom error types for status codes?
-
-  let result: Vec<Board> = response.json().await?;
-
-  // Storing it as a hash-map, so we can easily retrieve and return the id
-  let boards: HashMap<String, Board> =
-    result.iter().fold(HashMap::new(), |mut collection, board| {
-      collection.insert(board.name.clone(), board.clone());
-      collection
-    });
-
-  // Pull out names and get user to select a board name
-  let mut board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
-  board_names.sort();
-  let name_index: usize = Select::new()
-    .with_prompt("Select a board: ")
-    .items(&board_names)
-    .default(0)
-    .paged(true)
-    .interact()
-    .chain_err(|| "There was an error while trying to select a board.")?;
-
-  Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
+  pub estimated: Option<i32>,
+  pub correction: Option<i32>,
 }
 
 pub fn build_decks(
@@ -123,7 +82,7 @@ fn score_to_num(capture: Option<Captures>) -> Option<i32> {
 }
 
 /// Extracts a score from a trello card, based on using [] or (). If no score is found a 0 is returned
-fn get_score(maybe_points: &str) -> Option<Score> {
+pub fn get_score(maybe_points: &str) -> Option<Score> {
   // this will capture on "(0)" or "[0]" where 0 is an arbitrary sized digit
   let correction = score_to_num(Regex::new(r"\[(\d+)\]").unwrap().captures(&maybe_points));
 

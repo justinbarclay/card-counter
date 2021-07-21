@@ -2,8 +2,8 @@ use crate::{
   // database::azure::Azure,
   database::{config::Config, get_decks_by_date, Database, DatabaseType, DateRange, Entry},
   errors::Result,
-  score::{build_decks, print_decks, print_delta, select_board, Deck},
-  trello::{collect_cards, get_board, get_cards, get_lists, Auth, Board, Card},
+  score::{build_decks, print_decks, print_delta, Deck},
+  trello::{collect_cards, get_board, get_cards, get_lists, select_board, Auth, Board, Card},
 };
 use burndown::Burndown;
 use chrono::NaiveDateTime;
