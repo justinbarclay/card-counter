@@ -28,7 +28,11 @@ pub struct JiraAuth {
   pub api_token: String,
   pub url: String,
 }
-
+impl JiraAuth {
+  fn empty(&self) -> bool {
+    self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
+  }
+}
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Board {
   Trello(TrelloAuth),
@@ -298,7 +302,7 @@ impl Config {
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
   pub fn check_for_auth() -> Result<Option<Auth>> {
     match Config::from_file()? {
-      Some(config) => Ok(Some(config.trello_auth())),
+      Some(config) => Ok(config.trello_auth()),
       None => Ok(trello::auth_from_env()),
     }
   }
@@ -341,13 +345,16 @@ impl Config {
     }
   }
 
-  pub fn trello_auth(self) -> Auth {
+  pub fn trello_auth(self) -> Option<Auth> {
     match self.kanban {
-      Board::Jira(_) => panic!("Unable to get auth details for Jira"),
-      Board::Trello(trello) => Auth {
+      Board::Jira(_) => {
+        eprintln!("Unable to get auth details for Jira");
+        None
+      }
+      Board::Trello(trello) => Some(Auth {
         key: trello.key,
         token: trello.token,
-      },
+      }),
     }
   }
 }

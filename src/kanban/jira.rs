@@ -142,7 +142,7 @@ impl JiraClient {
         client: reqwest::Client::new(),
         auth,
       },
-      (_, _) => panic!("Unable to find information needed to authenticate to Jira API."),
+      (_, _) => panic!("Unable to find information needed to authenticate with Jira API."),
     }
   }
 }
