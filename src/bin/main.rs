@@ -6,7 +6,13 @@ use clap::{App, Arg};
 
 use card_counter::{
   commands::Command,
-  database::{aws::Aws, azure::Azure, config::Config, json::JSON, Database, DatabaseType, Entry},
+  database::{
+    aws::Aws,
+    azure::Azure,
+    config::{self, Config},
+    json::JSON,
+    Database, DatabaseType, Entry,
+  },
   errors::Result,
 };
 
@@ -15,6 +21,15 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
     .version(env!("CARGO_PKG_VERSION"))
     .author("Justin Barclay <justincbarclay@gmail.com>")
     .about("A CLI for quickly summarizing story points in Trello lists")
+    .arg(
+      Arg::with_name("kanban")
+        .short("k")
+        .long("kanban")
+        .value_name("KANBAN")
+        .help("The kanban API to get your board and card information from")
+        .possible_values(&["jira", "trello"])
+        .takes_value(true),
+    )
     .arg(
       Arg::with_name("board_id")
         .short("b")
@@ -131,14 +146,6 @@ async fn run() -> Result<()> {
     std::process::exit(0)
   }
 
-  // Counting cards or generating burndown charts requires access to both Trello
-  // and the database. So we've split those two commands into a separate if/else
-  // block
-  let auth = match Config::check_for_auth()? {
-    Some(auth) => auth,
-    None => std::process::exit(1),
-  };
-
   // TODO refactor database checking into each command,
   // the command can worry about if and when to open or verify database connection
   let database: Box<dyn Database> = match Command::check_for_database(matches.value_of("database"))?
@@ -149,9 +156,10 @@ async fn run() -> Result<()> {
   };
 
   if let Some(matches) = matches.subcommand_matches("burndown") {
-    Command::output_burndown(auth, matches, &database).await?;
+    Command::output_burndown(matches, &database).await?;
   } else {
-    let (board, decks) = Command::show_score(auth.clone(), &matches, &database).await?;
+    let (board, decks) =
+      Command::show_score(&Config::from_file_or_default()?, &matches, &database).await?;
 
     if matches.is_present("save") && matches.value_of("save").unwrap() == "true" {
       database

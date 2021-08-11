@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
 
@@ -15,19 +16,61 @@ use crate::{
 pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct Trello {
+pub struct TrelloAuth {
   key: String,
   token: String,
   expiration: String,
 }
 
-impl Default for Trello {
-  fn default() -> Trello {
-    Trello {
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct JiraAuth {
+  pub username: String,
+  pub api_token: String,
+  pub url: String,
+}
+impl JiraAuth {
+  fn empty(&self) -> bool {
+    self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
+  }
+}
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub enum Board {
+  Trello(TrelloAuth),
+  Jira(JiraAuth),
+}
+
+impl fmt::Display for Board {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let kanban = match self {
+      &Board::Jira(_) => "Jira",
+      &Board::Trello(_) => "Trello",
+    };
+    write!(f, "{}", kanban)
+  }
+}
+
+impl Default for TrelloAuth {
+  fn default() -> TrelloAuth {
+    TrelloAuth {
       token: "".to_string(),
       key: "".to_string(),
       expiration: "1day".to_string(),
     }
+  }
+}
+impl Default for JiraAuth {
+  fn default() -> JiraAuth {
+    JiraAuth {
+      username: "".to_string(),
+      api_token: "".to_string(),
+      url: "".to_string(),
+    }
+  }
+}
+
+impl Default for Board {
+  fn default() -> Board {
+    Board::Trello(TrelloAuth::default())
   }
 }
 
@@ -53,7 +96,7 @@ pub struct DatabaseConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  pub trello: Trello,
+  pub kanban: Board,
   // We don't have azure config option because we get aws auth from standard aws sources.
   pub azure: Option<Azure>,
   #[serde(default)]
@@ -64,7 +107,7 @@ pub struct Config {
 impl Default for Config {
   fn default() -> Config {
     Config {
-      trello: Trello::default(),
+      kanban: Board::default(),
       azure: None,
       database: DatabaseType::default(),
       database_configuration: None,
@@ -102,7 +145,12 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
   })
 }
 
-fn trello_details(trello: &Trello) -> Result<Trello> {
+fn trello_details(kanban: Board) -> Result<TrelloAuth> {
+  let trello = match kanban {
+    Board::Jira(_) => TrelloAuth::default(),
+    Board::Trello(trello) => trello,
+  };
+
   let key = Input::<String>::new()
     .with_prompt("Trello API Key")
     .default(trello.key.clone())
@@ -125,11 +173,64 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
     .default(trello.token.clone())
     .interact()?;
 
-  Ok(Trello {
+  Ok(TrelloAuth {
     key,
     token,
     expiration,
   })
+}
+
+fn jira_details(kanban: Board) -> Result<JiraAuth> {
+  let jira = match kanban {
+    Board::Jira(jira) => jira,
+    Board::Trello(_) => JiraAuth::default(),
+  };
+
+  let url = Input::<String>::new()
+    .with_prompt("Jira URL:")
+    .default(jira.url.clone())
+    .interact()?;
+
+  let username = Input::<String>::new()
+    .with_prompt("Jira Username:")
+    .default(jira.username.clone())
+    .interact()?;
+
+  println!(
+    "To generate an API token for your Jira account please follow the instructions here at:
+https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account"
+  );
+
+  let api_token = Input::<String>::new()
+    .with_prompt("Jira API Token")
+    .default(jira.api_token.clone())
+    .interact()?;
+
+  Ok(JiraAuth {
+    username,
+    api_token,
+    url,
+  })
+}
+
+fn kanban_details(kanban: Board) -> Result<Board> {
+  let preferences = [
+    Board::Trello(TrelloAuth::default()),
+    Board::Jira(JiraAuth::default()),
+  ];
+  let choice = Select::new()
+    .with_prompt("What kanban board is this for?")
+    .items(&preferences)
+    .default(0)
+    .interact()
+    .chain_err(|| "There was an error setting your kanban preference.")?;
+
+  let new_auth = match preferences[choice] {
+    Board::Trello(_) => Board::Trello(trello_details(kanban)?),
+    Board::Jira(_) => Board::Jira(jira_details(kanban)?),
+  };
+
+  Ok(new_auth)
 }
 
 #[allow(dead_code)]
@@ -201,14 +302,13 @@ impl Config {
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
   pub fn check_for_auth() -> Result<Option<Auth>> {
     match Config::from_file()? {
-      Some(config) => Ok(Some(config.trello_auth())),
+      Some(config) => Ok(config.trello_auth()),
       None => Ok(trello::auth_from_env()),
     }
   }
 
   pub fn user_update_prompts(mut self) -> Result<Config> {
-    let trello = trello_details(&self.trello)?;
-    self.trello = trello;
+    self.kanban = kanban_details(self.kanban)?;
     self.database = database_preference()?;
     if self.database == DatabaseType::Azure {
       println!("What are your Cosmos database and container names?");
@@ -245,10 +345,16 @@ impl Config {
     }
   }
 
-  pub fn trello_auth(self) -> Auth {
-    Auth {
-      key: self.trello.key,
-      token: self.trello.token,
+  pub fn trello_auth(self) -> Option<Auth> {
+    match self.kanban {
+      Board::Jira(_) => {
+        eprintln!("Unable to get auth details for Jira");
+        None
+      }
+      Board::Trello(trello) => Some(Auth {
+        key: trello.key,
+        token: trello.token,
+      }),
     }
   }
 }

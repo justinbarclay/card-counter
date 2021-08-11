@@ -9,4 +9,6 @@ pub mod trello;
 //pub mod web_client;
 pub mod commands;
 pub mod database;
+pub mod kanban;
+
 pub mod errors;

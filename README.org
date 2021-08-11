@@ -41,7 +41,7 @@ Great! You've got the theory down. I decree that you are an official agile scrum
 Finally, finally, we're ready to get started.
 ** Getting Started
 You can begin thinking about getting started with ~card-counter~ now. But before you can start thinking about card-counter itself, however, you will need to take some steps to retrieve and save information from Trello:
-
+*** Trello
 1. Get your [[https://trello.com/app-key][API key]]
 2. Generate a Trello API token by going to ~https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key=<your-key-here>~
 3. Save these:
@@ -56,9 +56,24 @@ You can begin thinking about getting started with ~card-counter~ now. But before
    #+END_SRC
 
 There! We're done thinking about getting started. card-counter now knows enough about you to start talking to the Trello API. 
+*** Jira
+1. Generate an [[https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/][API token]] for your user
+2. Save the token, url, and username:
+   - As an environment variable:
+   #+begin_src shell
+     export JIRA_USERNAME=<your username>
+     export JIRA_API_TOKEN=<your API token>
+     export JIRA_URL=<your Jira URL>
+   #+end_src
+   - Or in the config file:     
+   #+begin_src shell
+     card-counter config
+   #+end_src
 
+
+*** Curiosity
 If you're curious about what information card-counter stores, you can find the config file and local database in ~$HOME/.card-counter/~. If you have privacy concerns about what card-counter is doing with your information, don't worry about it. card-counter pulls down your data from the Trello API, processes it, and stores it all locally on your machine.
-** Setting up Trello
+** Setting up your Kanban board
 *** What's the point?
 Now that you understand the theory, we are ready to set up our boards to be processed by card-counter. Luckily, preparing your board for card-counter is simple. You just put in some numbers and you are set. Ok, it's not quite that simple,  but it's close. 
 
@@ -131,6 +146,17 @@ card-counter burndown --board-id wtPNQDEV --start 2020-04-01 --end 2020-04-14 -f
 #+END_SRC
 
 [[./images/burndown.png]]
+**** Jira Board ID
+Similarly to Trello, Jira stores the board-id in the URL as well
+~<your based url>/jira/software/projects/CC/boards/<board-id>~
+
+So for example, to extract the information from your Jira board url https://card-counter.atlassian.net/jira/software/projects/CC/boards/1, the base URL would be "https://card-counter.atlassian.net" and the board-id would be "1".
+
+#+begin_src shell
+export JIRA_URL=https://card-counter.atlassian.net
+card-counter --board-id 1
+#+end_src
+
 ** "Advanced"
 Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's card-counter cloud edition! Where we allow you to store your data in DynamoDB or CosmosDB.
 
