@@ -9,18 +9,11 @@ use super::DatabaseType;
 use crate::database::json::config_file;
 use crate::{
   errors::*,
-  trello::{self, Auth},
+  kanban::trello::{self, TrelloAuth},
 };
 
 // The possible values that trello accepts for token expiration times
 pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct TrelloAuth {
-  key: String,
-  token: String,
-  expiration: String,
-}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct JiraAuth {
@@ -300,7 +293,7 @@ impl Config {
   }
 
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
-  pub fn check_for_auth() -> Result<Option<Auth>> {
+  pub fn check_for_auth() -> Result<Option<TrelloAuth>> {
     match Config::from_file()? {
       Some(config) => Ok(config.trello_auth()),
       None => Ok(trello::auth_from_env()),
@@ -345,16 +338,13 @@ impl Config {
     }
   }
 
-  pub fn trello_auth(self) -> Option<Auth> {
+  pub fn trello_auth(self) -> Option<TrelloAuth> {
     match self.kanban {
       Board::Jira(_) => {
         eprintln!("Unable to get auth details for Jira");
         None
       }
-      Board::Trello(trello) => Some(Auth {
-        key: trello.key,
-        token: trello.token,
-      }),
+      Board::Trello(trello) => Some(trello),
     }
   }
 }

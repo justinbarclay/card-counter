@@ -1,4 +1,5 @@
 pub mod jira;
+pub mod trello;
 use std::collections::HashMap;
 
 use crate::{
@@ -15,13 +16,14 @@ enum KanbanBoard {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Board {
-  pub id: u32,
+  pub id: String,
   pub name: String,
 }
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct List {
   pub name: String,
-  pub board_id: u32,
+  pub id: String,
+  pub board_id: String,
 }
 #[derive(Debug)]
 pub struct Card {
@@ -45,8 +47,9 @@ pub fn build_decks(
   mut associated_cards: HashMap<String, Vec<Card>>,
 ) -> Vec<Deck> {
   let mut decks = Vec::new();
+
   for list in lists {
-    let cards = associated_cards.entry(list.name.clone()).or_default();
+    let cards = associated_cards.entry(list.id.clone()).or_default();
     let (score, unscored, estimated) =
       cards
         .iter()
@@ -80,8 +83,8 @@ pub fn build_decks(
 
 #[async_trait]
 pub trait Kanban {
-  async fn get_board(&self, board_id: u32) -> Result<Board>;
-  async fn get_lists(&self, board_id: u32) -> Result<Vec<List>>;
-  async fn get_cards(&self, board_id: u32) -> Result<Vec<Card>>;
+  async fn get_board(&self, board_id: &str) -> Result<Board>;
+  async fn get_lists(&self, board_id: &str) -> Result<Vec<List>>;
+  async fn get_cards(&self, board_id: &str) -> Result<Vec<Card>>;
   async fn select_board(&self) -> Result<Board>;
 }

@@ -1,5 +1,5 @@
 // File for retrieving cards from trello and scoring them
-use crate::trello::{Card, List};
+use crate::kanban::{Card, List};
 use prettytable::Table;
 use regex::Captures;
 use regex::Regex;

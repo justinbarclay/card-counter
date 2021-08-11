@@ -4,9 +4,8 @@ use crate::{
     get_decks_by_date, Database, DatabaseType, DateRange, Entry,
   },
   errors::Result,
-  kanban::{self, jira::JiraClient, Kanban},
+  kanban::{self, jira::JiraClient, Kanban, Card, Board, List},
   score::{build_decks, print_decks, print_delta, Deck},
-  trello::{collect_cards, get_board, get_cards, get_lists, select_board, Auth, Board, Card},
 };
 use burndown::Burndown;
 use chrono::NaiveDateTime;
@@ -87,9 +86,10 @@ impl Command {
     let start_str = matches.value_of("start").expect("Missing start argument");
     let end_str = matches.value_of("end").expect("Missing end argument");
 
+    let trello = kanban::trello::TrelloClient::init(&Config::from_file_or_default()?);
     let board: Board = match matches.value_of("board_id") {
-      Some(id) => get_board(id, &auth).await?,
-      None => select_board(&auth).await?,
+      Some(id) => trello.get_board(id).await?,
+      None => trello.select_board().await?,
     };
 
     let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%F %H:%M:%S")
@@ -117,19 +117,16 @@ async fn trello_compile_decks(
   config: &Config,
   matches: &clap::ArgMatches<'_>,
 ) -> Result<(Board, Vec<Deck>)> {
-  let auth = match Config::check_for_auth()? {
-    Some(auth) => auth,
-    None => std::process::exit(1),
-  };
+  let trello = kanban::trello::TrelloClient::init(config);
 
-  let board: Board = match matches.value_of("board_id") {
-    Some(id) => get_board(id, &auth).await?,
-    None => select_board(&auth).await?,
+  let board: kanban::Board = match matches.value_of("board_id") {
+    Some(id) => trello.get_board(id).await?,
+    None => trello.select_board().await?,
   };
-  let lists = get_lists(&auth, &board.id).await?;
-  let cards = get_cards(&auth, &board.id).await?;
-  let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
-  let decks = build_decks(lists, map_cards);
+  let lists = trello.get_lists(&board.id).await?;
+  let cards = trello.get_cards(&board.id).await?;
+  let map_cards: HashMap<String, Vec<Card>> = kanban::collect_cards(cards);
+  let decks = kanban::build_decks(lists, map_cards);
 
   Ok((board, decks))
 }
@@ -138,25 +135,18 @@ async fn kanban_compile_decks(
   jira: JiraClient,
   matches: &clap::ArgMatches<'_>,
 ) -> Result<(Board, Vec<Deck>)> {
-  let board: kanban::Board = match matches.value_of("board_id") {
-    Some(id) => {
-      jira
-        .get_board(id.parse().expect("Unable to parse board id."))
-        .await?
-    }
+  let board: Board = match matches.value_of("board_id") {
+    Some(id) => jira.get_board(id).await?,
     None => jira.select_board().await?,
   };
 
-  let lists = jira.get_lists(board.id).await?;
-  let cards = jira.get_cards(board.id).await?;
-  let map_cards: HashMap<String, Vec<kanban::Card>> = kanban::collect_cards(cards);
+  let lists = jira.get_lists(&board.id).await?;
+  let cards = jira.get_cards(&board.id).await?;
+  let map_cards: HashMap<String, Vec<Card>> = kanban::collect_cards(cards);
   let decks = kanban::build_decks(lists, map_cards);
 
   Ok((
-    Board {
-      id: board.id.to_string(),
-      name: board.name,
-    },
+    board,
     decks,
   ))
 }
