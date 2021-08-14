@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env};
+use std::{collections::HashMap};
 
 use crate::{
   database::config,
@@ -31,6 +31,12 @@ struct Pagination {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+struct JiraBoard {
+  id: u32,
+  name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct Status {
   id: String,
   name: String,
@@ -53,7 +59,7 @@ struct PagedBoards {
   #[serde(flatten)]
   pagination: Pagination,
   #[serde(rename = "values")]
-  boards: Vec<Board>,
+  boards: Vec<JiraBoard>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -67,6 +73,7 @@ pub struct JiraClient {
   client: reqwest::Client,
   auth: Auth,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Column {
   name: String,
@@ -75,6 +82,7 @@ pub struct Column {
 pub struct ColumnConfig {
   columns: Vec<Column>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Configuration {
   id: u32,
@@ -102,6 +110,24 @@ impl From<&Issue> for Card {
   }
 }
 
+impl From<JiraBoard> for Board {
+  fn from(board: JiraBoard) -> Self {
+    Board {
+      name: board.name,
+      id: board.id.to_string(),
+    }
+  }
+}
+
+impl From<&JiraBoard> for Board {
+  fn from(board: &JiraBoard) -> Self {
+    Board {
+      name: board.name.clone(),
+      id: board.id.to_string(),
+    }
+  }
+}
+
 impl From<Configuration> for Vec<List> {
   fn from(config: Configuration) -> Self {
     config_to_lists(&config)
@@ -120,16 +146,17 @@ pub fn config_to_lists(config: &Configuration) -> Vec<List> {
     .iter()
     .map(|column| List {
       name: column.name.clone(),
-      board_id: config.id,
+      id: column.name.clone(),
+      board_id: config.id.to_string(),
     })
     .collect()
 }
 
 impl JiraClient {
   pub fn init(config: &Config) -> Self {
-    match (&config.kanban, auth_from_env()) {
-      (config::Board::Jira(auth), _) => {
-        return JiraClient {
+    match &config.kanban {
+      config::KanbanBoard::Jira(auth) => {
+        JiraClient {
           client: reqwest::Client::new(),
           auth: Auth {
             username: auth.username.clone(),
@@ -138,33 +165,64 @@ impl JiraClient {
           },
         }
       }
-      (_, Some(auth)) => JiraClient {
-        client: reqwest::Client::new(),
-        auth,
-      },
-      (_, _) => panic!("Unable to find information needed to authenticate with Jira API."),
+      _ => panic!("Unable to find information needed to authenticate with Jira API."),
     }
   }
 }
 
 #[async_trait]
 impl Kanban for JiraClient {
-  async fn get_board(&self, board_id: u32) -> Result<Board> {
+  async fn get_board(&self, board_id: &str) -> Result<Board> {
     let route = format!("{}/rest/agile/1.0/board/{}", self.auth.base_url, board_id);
-    Ok(
-      self
-        .client
-        .get(&route)
-        .basic_auth(&self.auth.username, Some(&self.auth.token))
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap(),
-    )
+    let board: JiraBoard = self
+      .client
+      .get(&route)
+      .basic_auth(&self.auth.username, Some(&self.auth.token))
+      .send()
+      .await
+      .unwrap()
+      .json()
+      .await
+      .unwrap();
+    Ok(board.into())
   }
-  async fn get_lists(&self, board_id: u32) -> Result<Vec<List>> {
+
+  async fn select_board(&self) -> Result<Board> {
+    let route = format!("{}/rest/agile/1.0/board", self.auth.base_url);
+
+    let response = self
+      .client
+      .get(&route)
+      .basic_auth(&self.auth.username, Some(&self.auth.token))
+      .send()
+      .await
+      .unwrap();
+    let result: PagedBoards = response.json().await?;
+
+    // Storing it as a hash-map, so we can easily retrieve and return the id
+    let boards: _ = result.boards.iter().fold(
+      HashMap::new(),
+      |mut collection: HashMap<String, Board>, board: &JiraBoard| {
+        collection.insert(board.name.clone(), board.into());
+        collection
+      },
+    );
+
+    // Pull out names and get user to select a board name
+    let mut board_names: Vec<String> = boards.keys().cloned().collect();
+    board_names.sort();
+    let name_index: usize = Select::new()
+      .with_prompt("Select a board: ")
+      .items(&board_names)
+      .default(0)
+      .paged(true)
+      .interact()
+      .chain_err(|| "There was an error while trying to select a board.")?;
+
+    Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
+  }
+
+  async fn get_lists(&self, board_id: &str) -> Result<Vec<List>> {
     let route = format!(
       "{}/rest/agile/1.0/board/{}/configuration",
       self.auth.base_url, board_id
@@ -183,7 +241,7 @@ impl Kanban for JiraClient {
     Ok(config.into())
   }
 
-  async fn get_cards(&self, board_id: u32) -> Result<Vec<Card>> {
+  async fn get_cards(&self, board_id: &str) -> Result<Vec<Card>> {
     let route = format!(
       "{}/rest/agile/1.0/board/{}/issue",
       self.auth.base_url, board_id
@@ -201,88 +259,4 @@ impl Kanban for JiraClient {
 
     Ok(response.issues.iter().map(|issue| issue.into()).collect())
   }
-
-  async fn select_board(&self) -> Result<Board> {
-    let route = format!("{}/rest/agile/1.0/board", self.auth.base_url);
-
-    let response = self
-      .client
-      .get(&route)
-      .basic_auth(&self.auth.username, Some(&self.auth.token))
-      .send()
-      .await
-      .unwrap();
-    let result: PagedBoards = response.json().await?;
-
-    // Storing it as a hash-map, so we can easily retrieve and return the id
-    let boards: _ = result.boards.iter().fold(
-      HashMap::new(),
-      |mut collection: HashMap<String, Board>, board: &Board| {
-        collection.insert(board.name.clone(), board.to_owned());
-        collection
-      },
-    );
-
-    // Pull out names and get user to select a board name
-    let mut board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
-    board_names.sort();
-    let name_index: usize = Select::new()
-      .with_prompt("Select a board: ")
-      .items(&board_names)
-      .default(0)
-      .paged(true)
-      .interact()
-      .chain_err(|| "There was an error while trying to select a board.")?;
-
-    Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
-  }
-}
-
-fn auth_from_env() -> Option<Auth> {
-  let username: String = match env::var("JIRA_USERNAME") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
-    }
-  };
-
-  let token: String = match env::var("JIRA_API_TOKEN") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-      return None;
-    }
-  };
-
-  let base_url: String = match env::var("JIRA_URL") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
-    }
-  };
-
-  if username.is_empty() {
-    eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-    eprintln!("For more information visitvisit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more info. and");
-    return None;
-  }
-  if token.is_empty() {
-    eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-    return None;
-  }
-
-  if base_url.is_empty() {
-    eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-    eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-    return None;
-  }
-  Some(Auth {
-    username,
-    token,
-    base_url,
-  })
 }

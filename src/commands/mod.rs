@@ -1,13 +1,13 @@
 use crate::{
   database::{
-    config::{self, Config},
+    config::Config,
     get_decks_by_date, Database, DatabaseType, DateRange, Entry,
   },
   errors::Result,
-  kanban::{self, jira::JiraClient, Kanban},
-  score::{build_decks, print_decks, print_delta, Deck},
-  trello::{collect_cards, get_board, get_cards, get_lists, select_board, Auth, Board, Card},
+  kanban::{self, Kanban, Board, Card, init_kanban_board},
+  score::{print_decks, print_delta, Deck},
 };
+
 use burndown::Burndown;
 use chrono::NaiveDateTime;
 
@@ -47,18 +47,8 @@ impl Command {
   ) -> Result<(Board, Vec<Deck>)> {
     let filter: Option<&str> = matches.value_of("filter");
     // Parse arguments, if board_id isn't found
-    let (board, decks) = match (&config.kanban, matches.value_of("kanban")) {
-      (_, Some("jira")) => {
-        let jira = JiraClient::init(config);
-        kanban_compile_decks(jira, matches).await?
-      }
-      (_, Some("trello")) => trello_compile_decks(config, matches).await?,
-      (config::Board::Jira(_), None) => {
-        let jira = JiraClient::init(config);
-        kanban_compile_decks(jira, matches).await?
-      }
-      _ => trello_compile_decks(config, matches).await?,
-    };
+    let kanban = init_kanban_board(config, matches);
+    let (board, decks) = kanban_compile_decks(kanban, matches).await?;
 
     if matches.is_present("compare") {
       if let Some(old_entries) = client.query_entries(board.id.to_string(), None).await? {
@@ -80,16 +70,17 @@ impl Command {
     matches: &clap::ArgMatches<'_>,
     client: &Box<dyn Database>,
   ) -> Result<()> {
-    let auth = match Config::check_for_auth()? {
+    let _auth = match Config::check_for_auth()? {
       Some(auth) => auth,
       None => std::process::exit(1),
     };
     let start_str = matches.value_of("start").expect("Missing start argument");
     let end_str = matches.value_of("end").expect("Missing end argument");
 
+    let trello = kanban::trello::TrelloClient::init(&Config::from_file_or_default()?);
     let board: Board = match matches.value_of("board_id") {
-      Some(id) => get_board(id, &auth).await?,
-      None => select_board(&auth).await?,
+      Some(id) => trello.get_board(id).await?,
+      None => trello.select_board().await?,
     };
 
     let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%F %H:%M:%S")
@@ -113,50 +104,19 @@ impl Command {
   }
 }
 
-async fn trello_compile_decks(
-  config: &Config,
-  matches: &clap::ArgMatches<'_>,
-) -> Result<(Board, Vec<Deck>)> {
-  let auth = match Config::check_for_auth()? {
-    Some(auth) => auth,
-    None => std::process::exit(1),
-  };
-
-  let board: Board = match matches.value_of("board_id") {
-    Some(id) => get_board(id, &auth).await?,
-    None => select_board(&auth).await?,
-  };
-  let lists = get_lists(&auth, &board.id).await?;
-  let cards = get_cards(&auth, &board.id).await?;
-  let map_cards: HashMap<String, Vec<Card>> = collect_cards(cards);
-  let decks = build_decks(lists, map_cards);
-
-  Ok((board, decks))
-}
-
 async fn kanban_compile_decks(
-  jira: JiraClient,
+  kanban: Box<dyn Kanban>,
   matches: &clap::ArgMatches<'_>,
 ) -> Result<(Board, Vec<Deck>)> {
-  let board: kanban::Board = match matches.value_of("board_id") {
-    Some(id) => {
-      jira
-        .get_board(id.parse().expect("Unable to parse board id."))
-        .await?
-    }
-    None => jira.select_board().await?,
+  let board: Board = match matches.value_of("board_id") {
+    Some(id) => kanban.get_board(id).await?,
+    None => kanban.select_board().await?,
   };
 
-  let lists = jira.get_lists(board.id).await?;
-  let cards = jira.get_cards(board.id).await?;
-  let map_cards: HashMap<String, Vec<kanban::Card>> = kanban::collect_cards(cards);
+  let lists = kanban.get_lists(&board.id).await?;
+  let cards = kanban.get_cards(&board.id).await?;
+  let map_cards: HashMap<String, Vec<Card>> = kanban::collect_cards(cards);
   let decks = kanban::build_decks(lists, map_cards);
 
-  Ok((
-    Board {
-      id: board.id.to_string(),
-      name: board.name,
-    },
-    decks,
-  ))
+  Ok((board, decks))
 }

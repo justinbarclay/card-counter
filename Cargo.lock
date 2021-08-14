@@ -211,7 +211,7 @@ checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
 
 [[package]]
 name = "card-counter"
-version = "1.0.0-alpha-2"
+version = "1.0.0-alpha-3"
 dependencies = [
  "async-trait",
  "azure_core",

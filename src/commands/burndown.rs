@@ -195,7 +195,7 @@ impl Burndown {
         {
           Point {
             x: date.to_owned().into(),
-            y: incompleted.clone() as f64,
+            y: *incompleted as f64,
           }
         }
       })
@@ -208,7 +208,7 @@ impl Burndown {
         {
           Point {
             x: date.to_owned().into(),
-            y: complete.clone() as f64,
+            y: *complete as f64,
           }
         }
       })

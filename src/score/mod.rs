@@ -1,5 +1,5 @@
 // File for retrieving cards from trello and scoring them
-use crate::trello::{Card, List};
+use crate::kanban::{Card, List};
 use prettytable::Table;
 use regex::Captures;
 use regex::Regex;
@@ -78,15 +78,14 @@ fn score_to_num(capture: Option<Captures>) -> Option<i32> {
       let maybe_number = &maybe_score[1..maybe_score.len() - 1];
       maybe_number.parse::<i32>().unwrap()
     })
-    .map(|number| number)
 }
 
 /// Extracts a score from a trello card, based on using [] or (). If no score is found a 0 is returned
 pub fn get_score(maybe_points: &str) -> Option<Score> {
   // this will capture on "(0)" or "[0]" where 0 is an arbitrary sized digit
-  let correction = score_to_num(Regex::new(r"\[(\d+)\]").unwrap().captures(&maybe_points));
+  let correction = score_to_num(Regex::new(r"\[(\d+)\]").unwrap().captures(maybe_points));
 
-  let estimated = score_to_num(Regex::new(r"\((\d+)\)").unwrap().captures(&maybe_points));
+  let estimated = score_to_num(Regex::new(r"\((\d+)\)").unwrap().captures(maybe_points));
 
   if let (None, None) = (estimated, correction) {
     return None;

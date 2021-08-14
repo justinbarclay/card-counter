@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
-
+use std::env;
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
 
@@ -9,18 +9,11 @@ use super::DatabaseType;
 use crate::database::json::config_file;
 use crate::{
   errors::*,
-  trello::{self, Auth},
+  kanban::trello::{TrelloAuth},
 };
 
 // The possible values that trello accepts for token expiration times
-pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
-
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct TrelloAuth {
-  key: String,
-  token: String,
-  expiration: String,
-}
+pub static TRELLO_TOKEN_EXPIRATION: &[&str] = &["1hour", "1day", "30days", "never"];
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct JiraAuth {
@@ -28,22 +21,24 @@ pub struct JiraAuth {
   pub api_token: String,
   pub url: String,
 }
-impl JiraAuth {
-  fn empty(&self) -> bool {
-    self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
-  }
-}
+
+// impl JiraAuth {
+//   fn empty(&self) -> bool {
+//     self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
+//   }
+// }
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum Board {
+pub enum KanbanBoard {
   Trello(TrelloAuth),
   Jira(JiraAuth),
 }
 
-impl fmt::Display for Board {
+impl fmt::Display for KanbanBoard {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let kanban = match self {
-      &Board::Jira(_) => "Jira",
-      &Board::Trello(_) => "Trello",
+      KanbanBoard::Jira(_) => "Jira",
+      KanbanBoard::Trello(_) => "Trello",
     };
     write!(f, "{}", kanban)
   }
@@ -68,9 +63,9 @@ impl Default for JiraAuth {
   }
 }
 
-impl Default for Board {
-  fn default() -> Board {
-    Board::Trello(TrelloAuth::default())
+impl Default for KanbanBoard {
+  fn default() -> KanbanBoard {
+    KanbanBoard::Trello(TrelloAuth::default())
   }
 }
 
@@ -96,7 +91,7 @@ pub struct DatabaseConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  pub kanban: Board,
+  pub kanban: KanbanBoard,
   // We don't have azure config option because we get aws auth from standard aws sources.
   pub azure: Option<Azure>,
   #[serde(default)]
@@ -107,7 +102,7 @@ pub struct Config {
 impl Default for Config {
   fn default() -> Config {
     Config {
-      kanban: Board::default(),
+      kanban: KanbanBoard::default(),
       azure: None,
       database: DatabaseType::default(),
       database_configuration: None,
@@ -116,14 +111,13 @@ impl Default for Config {
 }
 
 fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseConfig> {
-  let _current_config = current_config.unwrap_or(Default::default());
+  let _current_config = current_config.unwrap_or_default();
   let database_name = Input::<String>::new()
     .with_prompt("Database Name")
     .default(
       _current_config
         .database_name
-        .unwrap_or("card-counter".to_string())
-        .clone(),
+        .unwrap_or_else(|| "card-counter".to_string())
     )
     .interact()
     .ok();
@@ -133,8 +127,7 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
     .default(
       _current_config
         .container_name
-        .unwrap_or("card-counter".to_string())
-        .clone(),
+        .unwrap_or_else(|| "card-counter".to_string())
     )
     .interact()
     .ok();
@@ -145,10 +138,10 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
   })
 }
 
-fn trello_details(kanban: Board) -> Result<TrelloAuth> {
+fn trello_details(kanban: KanbanBoard) -> Result<TrelloAuth> {
   let trello = match kanban {
-    Board::Jira(_) => TrelloAuth::default(),
-    Board::Trello(trello) => trello,
+    KanbanBoard::Jira(_) => TrelloAuth::default(),
+    KanbanBoard::Trello(trello) => trello,
   };
 
   let key = Input::<String>::new()
@@ -170,7 +163,7 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
 
   let token = Input::<String>::new()
     .with_prompt("Trello API Token")
-    .default(trello.token.clone())
+    .default(trello.token)
     .interact()?;
 
   Ok(TrelloAuth {
@@ -180,10 +173,10 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
   })
 }
 
-fn jira_details(kanban: Board) -> Result<JiraAuth> {
+fn jira_details(kanban: KanbanBoard) -> Result<JiraAuth> {
   let jira = match kanban {
-    Board::Jira(jira) => jira,
-    Board::Trello(_) => JiraAuth::default(),
+    KanbanBoard::Jira(jira) => jira,
+    KanbanBoard::Trello(_) => JiraAuth::default(),
   };
 
   let url = Input::<String>::new()
@@ -203,7 +196,7 @@ https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-
 
   let api_token = Input::<String>::new()
     .with_prompt("Jira API Token")
-    .default(jira.api_token.clone())
+    .default(jira.api_token)
     .interact()?;
 
   Ok(JiraAuth {
@@ -213,10 +206,10 @@ https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-
   })
 }
 
-fn kanban_details(kanban: Board) -> Result<Board> {
+fn kanban_details(kanban: KanbanBoard) -> Result<KanbanBoard> {
   let preferences = [
-    Board::Trello(TrelloAuth::default()),
-    Board::Jira(JiraAuth::default()),
+    KanbanBoard::Trello(TrelloAuth::default()),
+    KanbanBoard::Jira(JiraAuth::default()),
   ];
   let choice = Select::new()
     .with_prompt("What kanban board is this for?")
@@ -226,8 +219,8 @@ fn kanban_details(kanban: Board) -> Result<Board> {
     .chain_err(|| "There was an error setting your kanban preference.")?;
 
   let new_auth = match preferences[choice] {
-    Board::Trello(_) => Board::Trello(trello_details(kanban)?),
-    Board::Jira(_) => Board::Jira(jira_details(kanban)?),
+    KanbanBoard::Trello(_) => KanbanBoard::Trello(trello_details(kanban)?),
+    KanbanBoard::Jira(_) => KanbanBoard::Jira(jira_details(kanban)?),
   };
 
   Ok(new_auth)
@@ -235,7 +228,7 @@ fn kanban_details(kanban: Board) -> Result<Board> {
 
 #[allow(dead_code)]
 fn aws_details(aws: Option<AWS>) -> Result<AWS> {
-  let _aws = aws.unwrap_or(Default::default());
+  let _aws = aws.unwrap_or_default();
   let access_key_id = Input::<String>::new()
     .with_prompt("Access Key ID")
     .default(_aws.access_key_id.clone())
@@ -248,7 +241,7 @@ fn aws_details(aws: Option<AWS>) -> Result<AWS> {
 
   let region = Input::<String>::new()
     .with_prompt("Region")
-    .default(_aws.region.clone())
+    .default(_aws.region)
     .interact()?;
 
   Ok(AWS {
@@ -300,10 +293,10 @@ impl Config {
   }
 
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
-  pub fn check_for_auth() -> Result<Option<Auth>> {
+  pub fn check_for_auth() -> Result<Option<TrelloAuth>> {
     match Config::from_file()? {
       Some(config) => Ok(config.trello_auth()),
-      None => Ok(trello::auth_from_env()),
+      None => Ok(trello_auth_from_env()),
     }
   }
 
@@ -345,16 +338,114 @@ impl Config {
     }
   }
 
-  pub fn trello_auth(self) -> Option<Auth> {
+  pub fn trello_auth(self) -> Option<TrelloAuth> {
+    if let Some(auth) = trello_auth_from_env() {
+      return Some(auth);
+    }
     match self.kanban {
-      Board::Jira(_) => {
+      KanbanBoard::Jira(_) => {
         eprintln!("Unable to get auth details for Jira");
         None
       }
-      Board::Trello(trello) => Some(Auth {
-        key: trello.key,
-        token: trello.token,
-      }),
+      KanbanBoard::Trello(trello) => Some(trello),
     }
   }
+
+  pub fn jira_auth(self) -> Option<JiraAuth> {
+    if let Some(auth) = jira_auth_from_env() {
+      return Some(auth);
+    }
+
+    match self.kanban{
+      KanbanBoard::Jira(jira) => {
+        Some(jira)
+      }
+      KanbanBoard::Trello(_) => {
+        eprintln!("Unable to get auth details for Jira");
+        None
+      },
+    }
+  }
+}
+
+pub fn trello_auth_from_env() -> Option<TrelloAuth> {
+  let key: String = match env::var("TRELLO_API_KEY") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+      return None;
+    }
+  };
+
+  let token: String = match env::var("TRELLO_API_TOKEN") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+      return None;
+    }
+  };
+
+  if key.is_empty() {
+    eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
+    return None;
+  }
+  if token.is_empty() {
+    eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
+    return None;
+  }
+  Some(TrelloAuth {
+    key,
+    token,
+    expiration: "".to_string(),
+  })
+}
+
+fn jira_auth_from_env() -> Option<JiraAuth> {
+  let username: String = match env::var("JIRA_USERNAME") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
+      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
+      return None;
+    }
+  };
+
+  let api_token: String = match env::var("JIRA_API_TOKEN") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
+      return None;
+    }
+  };
+
+  let url: String = match env::var("JIRA_URL") {
+    Ok(value) => value,
+    Err(_) => {
+      eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
+      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
+      return None;
+    }
+  };
+
+  if username.is_empty() {
+    eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
+    eprintln!("For more information visitvisit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more info. and");
+    return None;
+  }
+  if api_token.is_empty() {
+    eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
+    return None;
+  }
+
+  if url.is_empty() {
+    eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
+    eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
+    return None;
+  }
+
+  Some(JiraAuth {
+    username,
+    api_token,
+    url,
+  })
 }

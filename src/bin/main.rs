@@ -9,7 +9,7 @@ use card_counter::{
   database::{
     aws::Aws,
     azure::Azure,
-    config::{self, Config},
+    config::{Config},
     json::JSON,
     Database, DatabaseType, Entry,
   },
