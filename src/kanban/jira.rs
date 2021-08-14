@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env};
+use std::{collections::HashMap};
 
 use crate::{
   database::config,
@@ -154,8 +154,8 @@ pub fn config_to_lists(config: &Configuration) -> Vec<List> {
 
 impl JiraClient {
   pub fn init(config: &Config) -> Self {
-    match (&config.kanban, auth_from_env()) {
-      (config::KanbanBoard::Jira(auth), _) => {
+    match &config.kanban {
+      config::KanbanBoard::Jira(auth) => {
         JiraClient {
           client: reqwest::Client::new(),
           auth: Auth {
@@ -165,11 +165,7 @@ impl JiraClient {
           },
         }
       }
-      (_, Some(auth)) => JiraClient {
-        client: reqwest::Client::new(),
-        auth,
-      },
-      (_, _) => panic!("Unable to find information needed to authenticate with Jira API."),
+      _ => panic!("Unable to find information needed to authenticate with Jira API."),
     }
   }
 }
@@ -263,53 +259,4 @@ impl Kanban for JiraClient {
 
     Ok(response.issues.iter().map(|issue| issue.into()).collect())
   }
-}
-
-fn auth_from_env() -> Option<Auth> {
-  let username: String = match env::var("JIRA_USERNAME") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
-    }
-  };
-
-  let token: String = match env::var("JIRA_API_TOKEN") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-      return None;
-    }
-  };
-
-  let base_url: String = match env::var("JIRA_URL") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
-    }
-  };
-
-  if username.is_empty() {
-    eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-    eprintln!("For more information visitvisit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more info. and");
-    return None;
-  }
-  if token.is_empty() {
-    eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-    return None;
-  }
-
-  if base_url.is_empty() {
-    eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-    eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-    return None;
-  }
-  Some(Auth {
-    username,
-    token,
-    base_url,
-  })
 }

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env};
+use std::{collections::HashMap};
 
 use crate::{
   database::config,
@@ -95,52 +95,16 @@ impl From<&TrelloCard> for Card {
 
 impl TrelloClient {
   pub fn init(config: &Config) -> Self {
-    match (&config.kanban, auth_from_env()) {
-      (config::KanbanBoard::Trello(auth), _) => {
+    match &config.kanban {
+      config::KanbanBoard::Trello(auth) => {
         TrelloClient {
           client: reqwest::Client::new(),
           auth: auth.to_owned(),
         }
-      }
-      (_, Some(auth)) => TrelloClient {
-        client: reqwest::Client::new(),
-        auth,
       },
-      (_, _) => panic!("Unable to find information needed to authenticate with Jira API."),
+      _ => panic!("Unable to find information needed to authenticate with Jira API."),
     }
   }
-}
-
-pub fn auth_from_env() -> Option<TrelloAuth> {
-  let key: String = match env::var("TRELLO_API_KEY") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
-      return None;
-    }
-  };
-
-  let token: String = match env::var("TRELLO_API_TOKEN") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
-      return None;
-    }
-  };
-
-  if key.is_empty() {
-    eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
-    return None;
-  }
-  if token.is_empty() {
-    eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
-    return None;
-  }
-  Some(TrelloAuth {
-    key,
-    token,
-    expiration: "".to_string(),
-  })
 }
 
 // Adds formatting to error message if getting a 401 from the api
