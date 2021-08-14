@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
   database::config,
@@ -96,11 +96,9 @@ impl From<&TrelloCard> for Card {
 impl TrelloClient {
   pub fn init(config: &Config) -> Self {
     match &config.kanban {
-      config::KanbanBoard::Trello(auth) => {
-        TrelloClient {
-          client: reqwest::Client::new(),
-          auth: auth.to_owned(),
-        }
+      config::KanbanBoard::Trello(auth) => TrelloClient {
+        client: reqwest::Client::new(),
+        auth: auth.to_owned(),
       },
       _ => panic!("Unable to find information needed to authenticate with Jira API."),
     }

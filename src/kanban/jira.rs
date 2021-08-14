@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{
   database::config,
@@ -155,16 +155,14 @@ pub fn config_to_lists(config: &Configuration) -> Vec<List> {
 impl JiraClient {
   pub fn init(config: &Config) -> Self {
     match &config.kanban {
-      config::KanbanBoard::Jira(auth) => {
-        JiraClient {
-          client: reqwest::Client::new(),
-          auth: Auth {
-            username: auth.username.clone(),
-            base_url: auth.url.clone(),
-            token: auth.api_token.clone(),
-          },
-        }
-      }
+      config::KanbanBoard::Jira(auth) => JiraClient {
+        client: reqwest::Client::new(),
+        auth: Auth {
+          username: auth.username.clone(),
+          base_url: auth.url.clone(),
+          token: auth.api_token.clone(),
+        },
+      },
       _ => panic!("Unable to find information needed to authenticate with Jira API."),
     }
   }

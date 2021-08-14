@@ -1,10 +1,7 @@
 use crate::{
-  database::{
-    config::Config,
-    get_decks_by_date, Database, DatabaseType, DateRange, Entry,
-  },
+  database::{config::Config, get_decks_by_date, Database, DatabaseType, DateRange, Entry},
   errors::Result,
-  kanban::{self, Kanban, Board, Card, init_kanban_board},
+  kanban::{self, init_kanban_board, Board, Card, Kanban},
   score::{print_decks, print_delta, Deck},
 };
 

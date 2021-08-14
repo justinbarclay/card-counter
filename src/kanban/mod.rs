@@ -2,7 +2,11 @@ pub mod jira;
 pub mod trello;
 use std::collections::HashMap;
 
-use crate::{database::config::{self, Config}, errors::*, score::{get_score, Deck}};
+use crate::{
+  database::config::{self, Config},
+  errors::*,
+  score::{get_score, Deck},
+};
 use jira::JiraClient;
 use trello::TrelloClient;
 
@@ -93,10 +97,7 @@ pub fn build_decks(
   decks
 }
 
-pub fn init_kanban_board(
-  config: &Config,
-  matches: &clap::ArgMatches<'_>,
-) -> Box<dyn Kanban> {
+pub fn init_kanban_board(config: &Config, matches: &clap::ArgMatches<'_>) -> Box<dyn Kanban> {
   match matches.value_of("kanban") {
     Some("trello") => Box::new(TrelloClient::init(config)),
     Some("jira") => Box::new(JiraClient::init(config)),

@@ -71,13 +71,11 @@ pub fn build_decks(
 /// return None instead.
 fn score_to_num(capture: Option<Captures>) -> Option<i32> {
   // If at any point this fails we should return None
-  capture
-    .map(|cap| cap.get(0).unwrap())
-    .map(|parsed_string| {
-      let maybe_score = String::from(parsed_string.as_str());
-      let maybe_number = &maybe_score[1..maybe_score.len() - 1];
-      maybe_number.parse::<i32>().unwrap()
-    })
+  capture.map(|cap| cap.get(0).unwrap()).map(|parsed_string| {
+    let maybe_score = String::from(parsed_string.as_str());
+    let maybe_number = &maybe_score[1..maybe_score.len() - 1];
+    maybe_number.parse::<i32>().unwrap()
+  })
 }
 
 /// Extracts a score from a trello card, based on using [] or (). If no score is found a 0 is returned

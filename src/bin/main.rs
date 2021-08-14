@@ -6,13 +6,7 @@ use clap::{App, Arg};
 
 use card_counter::{
   commands::Command,
-  database::{
-    aws::Aws,
-    azure::Azure,
-    config::{Config},
-    json::JSON,
-    Database, DatabaseType, Entry,
-  },
+  database::{aws::Aws, azure::Azure, config::Config, json::JSON, Database, DatabaseType, Entry},
   errors::Result,
 };
 

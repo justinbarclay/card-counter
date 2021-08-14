@@ -100,7 +100,10 @@ pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {
     return None;
   }
 
-  entries.iter().find(|entry| entry.time_stamp == date).map(|entry| entry.decks.clone())
+  entries
+    .iter()
+    .find(|entry| entry.time_stamp == date)
+    .map(|entry| entry.decks.clone())
 }
 
 impl Entry {

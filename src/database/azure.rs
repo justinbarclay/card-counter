@@ -166,12 +166,7 @@ impl Database for Azure {
       .into_raw()
       .results;
 
-    Ok(Some(
-      results
-        .iter()
-        .map(Entry::from)
-        .collect(),
-    ))
+    Ok(Some(results.iter().map(Entry::from).collect()))
   }
 }
 impl Azure {
@@ -200,13 +195,9 @@ impl Azure {
           "No database name set. Please run 'card-counter config' to set the database name"
         })?
         .clone(),
-      collection_name: database_details
-        .container_name
-        .clone()
-        .chain_err(|| {
-          "No container name set. Please run 'card-counter config' to set the container name"
-        })?
-        ,
+      collection_name: database_details.container_name.clone().chain_err(|| {
+        "No container name set. Please run 'card-counter config' to set the container name"
+      })?,
     };
 
     let db_exist = does_database_exist(&azure).await?;

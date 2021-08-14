@@ -1,16 +1,13 @@
+use dialoguer::{Input, Select};
+use serde::{Deserialize, Serialize};
+use std::env;
 use std::fmt;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
-use std::env;
-use dialoguer::{Input, Select};
-use serde::{Deserialize, Serialize};
 
 use super::DatabaseType;
 use crate::database::json::config_file;
-use crate::{
-  errors::*,
-  kanban::trello::{TrelloAuth},
-};
+use crate::{errors::*, kanban::trello::TrelloAuth};
 
 // The possible values that trello accepts for token expiration times
 pub static TRELLO_TOKEN_EXPIRATION: &[&str] = &["1hour", "1day", "30days", "never"];
@@ -117,7 +114,7 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
     .default(
       _current_config
         .database_name
-        .unwrap_or_else(|| "card-counter".to_string())
+        .unwrap_or_else(|| "card-counter".to_string()),
     )
     .interact()
     .ok();
@@ -127,7 +124,7 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
     .default(
       _current_config
         .container_name
-        .unwrap_or_else(|| "card-counter".to_string())
+        .unwrap_or_else(|| "card-counter".to_string()),
     )
     .interact()
     .ok();
@@ -356,14 +353,12 @@ impl Config {
       return Some(auth);
     }
 
-    match self.kanban{
-      KanbanBoard::Jira(jira) => {
-        Some(jira)
-      }
+    match self.kanban {
+      KanbanBoard::Jira(jira) => Some(jira),
       KanbanBoard::Trello(_) => {
         eprintln!("Unable to get auth details for Jira");
         None
-      },
+      }
     }
   }
 }

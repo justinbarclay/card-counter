@@ -131,7 +131,8 @@ impl Database for JSON {
       .database
       .get(&board_name)
       .unwrap_or(&HashMap::default())
-      .get(&time_stamp).map(|item| Entry {
+      .get(&time_stamp)
+      .map(|item| Entry {
         board_id: board_name,
         decks: item.clone(),
         time_stamp,
