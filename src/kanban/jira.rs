@@ -1,6 +1,11 @@
 use std::{collections::HashMap, env};
 
-use crate::{database::config, database::config::{Config, JiraAuth}, errors::*, kanban::{Board, Card, Kanban, List}};
+use crate::{
+  database::config,
+  database::config::{Config, JiraAuth},
+  errors::*,
+  kanban::{Board, Card, Kanban, List},
+};
 
 use async_trait::async_trait;
 
@@ -24,7 +29,6 @@ struct Pagination {
   max_results: u32,
   total: u32,
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 struct JiraBoard {
@@ -110,7 +114,7 @@ impl From<JiraBoard> for Board {
   fn from(board: JiraBoard) -> Self {
     Board {
       name: board.name,
-      id: board.id.to_string()
+      id: board.id.to_string(),
     }
   }
 }
@@ -119,7 +123,7 @@ impl From<&JiraBoard> for Board {
   fn from(board: &JiraBoard) -> Self {
     Board {
       name: board.name.clone(),
-      id: board.id.to_string()
+      id: board.id.to_string(),
     }
   }
 }
@@ -151,7 +155,7 @@ pub fn config_to_lists(config: &Configuration) -> Vec<List> {
 impl JiraClient {
   pub fn init(config: &Config) -> Self {
     match (&config.kanban, auth_from_env()) {
-      (config::Board::Jira(auth), _) => {
+      (config::KanbanBoard::Jira(auth), _) => {
         return JiraClient {
           client: reqwest::Client::new(),
           auth: Auth {
@@ -175,18 +179,16 @@ impl Kanban for JiraClient {
   async fn get_board(&self, board_id: &str) -> Result<Board> {
     let route = format!("{}/rest/agile/1.0/board/{}", self.auth.base_url, board_id);
     let board: JiraBoard = self
-        .client
-        .get(&route)
-        .basic_auth(&self.auth.username, Some(&self.auth.token))
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-    Ok(
-      board.into()
-    )
+      .client
+      .get(&route)
+      .basic_auth(&self.auth.username, Some(&self.auth.token))
+      .send()
+      .await
+      .unwrap()
+      .json()
+      .await
+      .unwrap();
+    Ok(board.into())
   }
 
   async fn select_board(&self) -> Result<Board> {

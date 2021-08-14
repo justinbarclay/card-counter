@@ -27,16 +27,16 @@ impl JiraAuth {
   }
 }
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub enum Board {
+pub enum KanbanBoard {
   Trello(TrelloAuth),
   Jira(JiraAuth),
 }
 
-impl fmt::Display for Board {
+impl fmt::Display for KanbanBoard {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let kanban = match self {
-      &Board::Jira(_) => "Jira",
-      &Board::Trello(_) => "Trello",
+      &KanbanBoard::Jira(_) => "Jira",
+      &KanbanBoard::Trello(_) => "Trello",
     };
     write!(f, "{}", kanban)
   }
@@ -61,9 +61,9 @@ impl Default for JiraAuth {
   }
 }
 
-impl Default for Board {
-  fn default() -> Board {
-    Board::Trello(TrelloAuth::default())
+impl Default for KanbanBoard {
+  fn default() -> KanbanBoard {
+    KanbanBoard::Trello(TrelloAuth::default())
   }
 }
 
@@ -89,7 +89,7 @@ pub struct DatabaseConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
-  pub kanban: Board,
+  pub kanban: KanbanBoard,
   // We don't have azure config option because we get aws auth from standard aws sources.
   pub azure: Option<Azure>,
   #[serde(default)]
@@ -100,7 +100,7 @@ pub struct Config {
 impl Default for Config {
   fn default() -> Config {
     Config {
-      kanban: Board::default(),
+      kanban: KanbanBoard::default(),
       azure: None,
       database: DatabaseType::default(),
       database_configuration: None,
@@ -138,10 +138,10 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
   })
 }
 
-fn trello_details(kanban: Board) -> Result<TrelloAuth> {
+fn trello_details(kanban: KanbanBoard) -> Result<TrelloAuth> {
   let trello = match kanban {
-    Board::Jira(_) => TrelloAuth::default(),
-    Board::Trello(trello) => trello,
+    KanbanBoard::Jira(_) => TrelloAuth::default(),
+    KanbanBoard::Trello(trello) => trello,
   };
 
   let key = Input::<String>::new()
@@ -173,10 +173,10 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
   })
 }
 
-fn jira_details(kanban: Board) -> Result<JiraAuth> {
+fn jira_details(kanban: KanbanBoard) -> Result<JiraAuth> {
   let jira = match kanban {
-    Board::Jira(jira) => jira,
-    Board::Trello(_) => JiraAuth::default(),
+    KanbanBoard::Jira(jira) => jira,
+    KanbanBoard::Trello(_) => JiraAuth::default(),
   };
 
   let url = Input::<String>::new()
@@ -206,10 +206,10 @@ https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-
   })
 }
 
-fn kanban_details(kanban: Board) -> Result<Board> {
+fn kanban_details(kanban: KanbanBoard) -> Result<KanbanBoard> {
   let preferences = [
-    Board::Trello(TrelloAuth::default()),
-    Board::Jira(JiraAuth::default()),
+    KanbanBoard::Trello(TrelloAuth::default()),
+    KanbanBoard::Jira(JiraAuth::default()),
   ];
   let choice = Select::new()
     .with_prompt("What kanban board is this for?")
@@ -219,8 +219,8 @@ fn kanban_details(kanban: Board) -> Result<Board> {
     .chain_err(|| "There was an error setting your kanban preference.")?;
 
   let new_auth = match preferences[choice] {
-    Board::Trello(_) => Board::Trello(trello_details(kanban)?),
-    Board::Jira(_) => Board::Jira(jira_details(kanban)?),
+    KanbanBoard::Trello(_) => KanbanBoard::Trello(trello_details(kanban)?),
+    KanbanBoard::Jira(_) => KanbanBoard::Jira(jira_details(kanban)?),
   };
 
   Ok(new_auth)
@@ -340,11 +340,11 @@ impl Config {
 
   pub fn trello_auth(self) -> Option<TrelloAuth> {
     match self.kanban {
-      Board::Jira(_) => {
+      KanbanBoard::Jira(_) => {
         eprintln!("Unable to get auth details for Jira");
         None
       }
-      Board::Trello(trello) => Some(trello),
+      KanbanBoard::Trello(trello) => Some(trello),
     }
   }
 }

@@ -2,17 +2,17 @@ pub mod jira;
 pub mod trello;
 use std::collections::HashMap;
 
-use crate::{
-  errors::*,
-  score::{get_score, Deck},
-};
+use crate::{database::config::{self, Config}, errors::*, score::{get_score, Deck}};
+use jira::JiraClient;
+use trello::TrelloClient;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-enum KanbanBoard {
-  Trello,
-  Jira,
-}
+// enum KanbanBoard {
+//   Trello,
+//   Jira,
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Board {
@@ -29,6 +29,18 @@ pub struct List {
 pub struct Card {
   pub name: String,
   pub parent_list: String,
+}
+
+pub trait KanbanClient {
+  fn init() -> Self;
+}
+
+#[async_trait]
+pub trait Kanban {
+  async fn get_board(&self, board_id: &str) -> Result<Board>;
+  async fn get_lists(&self, board_id: &str) -> Result<Vec<List>>;
+  async fn get_cards(&self, board_id: &str) -> Result<Vec<Card>>;
+  async fn select_board(&self) -> Result<Board>;
 }
 
 pub fn collect_cards(cards: Vec<Card>) -> HashMap<String, Vec<Card>> {
@@ -81,10 +93,23 @@ pub fn build_decks(
   decks
 }
 
-#[async_trait]
-pub trait Kanban {
-  async fn get_board(&self, board_id: &str) -> Result<Board>;
-  async fn get_lists(&self, board_id: &str) -> Result<Vec<List>>;
-  async fn get_cards(&self, board_id: &str) -> Result<Vec<Card>>;
-  async fn select_board(&self) -> Result<Board>;
+pub fn init_kanban_board(
+  config: &Config,
+  matches: &clap::ArgMatches<'_>,
+) -> Box<dyn Kanban> {
+  match matches.value_of("kanban") {
+    Some("trello") => Box::new(TrelloClient::init(config)),
+    Some("jira") => Box::new(JiraClient::init(config)),
+    None => init_kanban_board_from_config(config),
+    Some(unknown) => {
+      panic!("Unknown kanban board: {}", unknown)
+    }
+  }
+}
+
+pub fn init_kanban_board_from_config(config: &Config) -> Box<Kanban> {
+  match config.kanban {
+    config::KanbanBoard::Trello(_) => Box::new(TrelloClient::init(config)),
+    config::KanbanBoard::Jira(_) => Box::new(JiraClient::init(config)),
+  }
 }

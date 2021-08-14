@@ -4,12 +4,13 @@ use crate::{
     get_decks_by_date, Database, DatabaseType, DateRange, Entry,
   },
   errors::Result,
-  kanban::{self, jira::JiraClient, Kanban, Card, Board, List},
+  kanban::{self, Kanban, Board, Card, List, init_kanban_board},
   score::{build_decks, print_decks, print_delta, Deck},
 };
 use burndown::Burndown;
 use chrono::NaiveDateTime;
 
+use core::panic;
 use std::collections::HashMap;
 
 pub mod burndown;
@@ -46,18 +47,8 @@ impl Command {
   ) -> Result<(Board, Vec<Deck>)> {
     let filter: Option<&str> = matches.value_of("filter");
     // Parse arguments, if board_id isn't found
-    let (board, decks) = match (&config.kanban, matches.value_of("kanban")) {
-      (_, Some("jira")) => {
-        let jira = JiraClient::init(config);
-        kanban_compile_decks(jira, matches).await?
-      }
-      (_, Some("trello")) => trello_compile_decks(config, matches).await?,
-      (config::Board::Jira(_), None) => {
-        let jira = JiraClient::init(config);
-        kanban_compile_decks(jira, matches).await?
-      }
-      _ => trello_compile_decks(config, matches).await?,
-    };
+    let kanban = init_kanban_board(config, matches);
+    let (board, decks) = kanban_compile_decks(kanban, matches).await?;
 
     if matches.is_present("compare") {
       if let Some(old_entries) = client.query_entries(board.id.to_string(), None).await? {
@@ -132,21 +123,18 @@ async fn trello_compile_decks(
 }
 
 async fn kanban_compile_decks(
-  jira: JiraClient,
+  kanban: Box<dyn Kanban>,
   matches: &clap::ArgMatches<'_>,
 ) -> Result<(Board, Vec<Deck>)> {
   let board: Board = match matches.value_of("board_id") {
-    Some(id) => jira.get_board(id).await?,
-    None => jira.select_board().await?,
+    Some(id) => kanban.get_board(id).await?,
+    None => kanban.select_board().await?,
   };
 
-  let lists = jira.get_lists(&board.id).await?;
-  let cards = jira.get_cards(&board.id).await?;
+  let lists = kanban.get_lists(&board.id).await?;
+  let cards = kanban.get_cards(&board.id).await?;
   let map_cards: HashMap<String, Vec<Card>> = kanban::collect_cards(cards);
   let decks = kanban::build_decks(lists, map_cards);
 
-  Ok((
-    board,
-    decks,
-  ))
+  Ok((board, decks))
 }

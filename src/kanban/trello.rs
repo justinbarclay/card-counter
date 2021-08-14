@@ -96,7 +96,7 @@ impl From<&TrelloCard> for Card {
 impl TrelloClient {
   pub fn init(config: &Config) -> Self {
     match (&config.kanban, auth_from_env()) {
-      (config::Board::Trello(auth), _) => {
+      (config::KanbanBoard::Trello(auth), _) => {
         return TrelloClient {
           client: reqwest::Client::new(),
           auth: auth.to_owned(),
@@ -136,7 +136,11 @@ pub fn auth_from_env() -> Option<TrelloAuth> {
     eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
     return None;
   }
-  Some(TrelloAuth { key, token, expiration: "".to_string() })
+  Some(TrelloAuth {
+    key,
+    token,
+    expiration: "".to_string(),
+  })
 }
 
 // Adds formatting to error message if getting a 401 from the api
@@ -154,10 +158,7 @@ pub fn no_authentication(auth: &TrelloAuth, response: &reqwest::Response) -> Res
 }
 
 pub fn trello_to_lists(lists: Vec<TrelloList>) -> Vec<List> {
-  lists
-    .iter()
-    .map(|list| list.into())
-    .collect()
+  lists.iter().map(|list| list.into()).collect()
 }
 
 #[async_trait]
