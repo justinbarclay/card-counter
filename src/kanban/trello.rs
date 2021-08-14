@@ -97,7 +97,7 @@ impl TrelloClient {
   pub fn init(config: &Config) -> Self {
     match (&config.kanban, auth_from_env()) {
       (config::KanbanBoard::Trello(auth), _) => {
-        return TrelloClient {
+        TrelloClient {
           client: reqwest::Client::new(),
           auth: auth.to_owned(),
         }
@@ -211,7 +211,7 @@ impl Kanban for TrelloClient {
       });
 
     // Pull out names and get user to select a board name
-    let mut board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
+    let mut board_names: Vec<String> = boards.keys().cloned().collect();
     board_names.sort();
     let name_index: usize = Select::new()
       .with_prompt("Select a board: ")
@@ -268,15 +268,4 @@ impl Kanban for TrelloClient {
 
     Ok(trello_cards.iter().map(|card| card.into()).collect())
   }
-}
-
-fn collect_cards(cards: Vec<TrelloCard>) -> HashMap<String, Vec<TrelloCard>> {
-  cards.into_iter().fold(
-    HashMap::new(),
-    |mut collection: HashMap<String, Vec<TrelloCard>>, card: TrelloCard| {
-      let list_id = card.id_list.clone();
-      collection.entry(list_id).or_default().push(card);
-      collection
-    },
-  )
 }

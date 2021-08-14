@@ -13,7 +13,7 @@ use crate::{
 };
 
 // The possible values that trello accepts for token expiration times
-pub static TRELLO_TOKEN_EXPIRATION: &'static [&str] = &["1hour", "1day", "30days", "never"];
+pub static TRELLO_TOKEN_EXPIRATION: &[&str] = &["1hour", "1day", "30days", "never"];
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct JiraAuth {
@@ -21,11 +21,13 @@ pub struct JiraAuth {
   pub api_token: String,
   pub url: String,
 }
-impl JiraAuth {
-  fn empty(&self) -> bool {
-    self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
-  }
-}
+
+// impl JiraAuth {
+//   fn empty(&self) -> bool {
+//     self.username.is_empty() || self.api_token.is_empty() || self.url.is_empty()
+//   }
+// }
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum KanbanBoard {
   Trello(TrelloAuth),
@@ -35,8 +37,8 @@ pub enum KanbanBoard {
 impl fmt::Display for KanbanBoard {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     let kanban = match self {
-      &KanbanBoard::Jira(_) => "Jira",
-      &KanbanBoard::Trello(_) => "Trello",
+      KanbanBoard::Jira(_) => "Jira",
+      KanbanBoard::Trello(_) => "Trello",
     };
     write!(f, "{}", kanban)
   }
@@ -109,14 +111,13 @@ impl Default for Config {
 }
 
 fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseConfig> {
-  let _current_config = current_config.unwrap_or(Default::default());
+  let _current_config = current_config.unwrap_or_default();
   let database_name = Input::<String>::new()
     .with_prompt("Database Name")
     .default(
       _current_config
         .database_name
-        .unwrap_or("card-counter".to_string())
-        .clone(),
+        .unwrap_or_else(|| "card-counter".to_string())
     )
     .interact()
     .ok();
@@ -126,8 +127,7 @@ fn database_details(current_config: Option<DatabaseConfig>) -> Option<DatabaseCo
     .default(
       _current_config
         .container_name
-        .unwrap_or("card-counter".to_string())
-        .clone(),
+        .unwrap_or_else(|| "card-counter".to_string())
     )
     .interact()
     .ok();
@@ -163,7 +163,7 @@ https://trello.com/1/authorize?expiration={}&name=card-counter&scope=read&respon
 
   let token = Input::<String>::new()
     .with_prompt("Trello API Token")
-    .default(trello.token.clone())
+    .default(trello.token)
     .interact()?;
 
   Ok(TrelloAuth {
@@ -196,7 +196,7 @@ https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-
 
   let api_token = Input::<String>::new()
     .with_prompt("Jira API Token")
-    .default(jira.api_token.clone())
+    .default(jira.api_token)
     .interact()?;
 
   Ok(JiraAuth {
@@ -228,7 +228,7 @@ fn kanban_details(kanban: KanbanBoard) -> Result<KanbanBoard> {
 
 #[allow(dead_code)]
 fn aws_details(aws: Option<AWS>) -> Result<AWS> {
-  let _aws = aws.unwrap_or(Default::default());
+  let _aws = aws.unwrap_or_default();
   let access_key_id = Input::<String>::new()
     .with_prompt("Access Key ID")
     .default(_aws.access_key_id.clone())
@@ -241,7 +241,7 @@ fn aws_details(aws: Option<AWS>) -> Result<AWS> {
 
   let region = Input::<String>::new()
     .with_prompt("Region")
-    .default(_aws.region.clone())
+    .default(_aws.region)
     .interact()?;
 
   Ok(AWS {

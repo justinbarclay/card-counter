@@ -44,7 +44,7 @@ impl From<Entry> for CosmosEntry {
       id: format!("{}-{}", entry.board_id, entry.time_stamp),
       board_id: entry.board_id,
       timestamp: entry.time_stamp,
-      decks: entry.decks.clone(),
+      decks: entry.decks,
     }
   }
 }
@@ -169,7 +169,7 @@ impl Database for Azure {
     Ok(Some(
       results
         .iter()
-        .map(|entry: &CosmosEntry| Entry::from(entry))
+        .map(Entry::from)
         .collect(),
     ))
   }
@@ -206,7 +206,7 @@ impl Azure {
         .chain_err(|| {
           "No container name set. Please run 'card-counter config' to set the container name"
         })?
-        .clone(),
+        ,
     };
 
     let db_exist = does_database_exist(&azure).await?;
@@ -226,7 +226,7 @@ impl Azure {
       }
     }
 
-    let collection_exist = does_collection_exist(&azure, &"card-counter").await?;
+    let collection_exist = does_collection_exist(&azure, "card-counter").await?;
     if !collection_exist {
       match dialoguer::Confirm::new()
         .with_prompt(
@@ -303,7 +303,7 @@ async fn does_database_exist(azure: &Azure) -> Result<bool> {
     .databases;
 
   match databases.iter().find_map(|database| {
-    if &database.id == &azure.database_name {
+    if database.id == azure.database_name {
       Some(database)
     } else {
       None
@@ -326,7 +326,7 @@ async fn does_collection_exist(azure: &Azure, name: &str) -> Result<bool> {
     .collections;
 
   match collections.iter().find_map(|collecation| {
-    if &collecation.id == name {
+    if collecation.id == name {
       Some(collecation)
     } else {
       None

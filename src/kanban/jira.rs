@@ -2,7 +2,7 @@ use std::{collections::HashMap, env};
 
 use crate::{
   database::config,
-  database::config::{Config, JiraAuth},
+  database::config::Config,
   errors::*,
   kanban::{Board, Card, Kanban, List},
 };
@@ -156,7 +156,7 @@ impl JiraClient {
   pub fn init(config: &Config) -> Self {
     match (&config.kanban, auth_from_env()) {
       (config::KanbanBoard::Jira(auth), _) => {
-        return JiraClient {
+        JiraClient {
           client: reqwest::Client::new(),
           auth: Auth {
             username: auth.username.clone(),
@@ -213,7 +213,7 @@ impl Kanban for JiraClient {
     );
 
     // Pull out names and get user to select a board name
-    let mut board_names: Vec<String> = boards.keys().map(|key: &String| key.clone()).collect();
+    let mut board_names: Vec<String> = boards.keys().cloned().collect();
     board_names.sort();
     let name_index: usize = Select::new()
       .with_prompt("Select a board: ")

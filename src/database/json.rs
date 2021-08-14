@@ -127,19 +127,15 @@ impl Database for JSON {
     Ok(None)
   }
   async fn get_entry(&self, board_name: String, time_stamp: i64) -> Result<Option<Entry>> {
-    let result = match self
+    let result = self
       .database
       .get(&board_name)
       .unwrap_or(&HashMap::default())
-      .get(&time_stamp)
-    {
-      Some(item) => Some(Entry {
+      .get(&time_stamp).map(|item| Entry {
         board_id: board_name,
         decks: item.clone(),
         time_stamp,
-      }),
-      None => None,
-    };
+      });
 
     Ok(result)
   }

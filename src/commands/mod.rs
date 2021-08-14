@@ -1,16 +1,16 @@
 use crate::{
   database::{
-    config::{self, Config},
+    config::Config,
     get_decks_by_date, Database, DatabaseType, DateRange, Entry,
   },
   errors::Result,
-  kanban::{self, Kanban, Board, Card, List, init_kanban_board},
-  score::{build_decks, print_decks, print_delta, Deck},
+  kanban::{self, Kanban, Board, Card, init_kanban_board},
+  score::{print_decks, print_delta, Deck},
 };
+
 use burndown::Burndown;
 use chrono::NaiveDateTime;
 
-use core::panic;
 use std::collections::HashMap;
 
 pub mod burndown;
@@ -70,7 +70,7 @@ impl Command {
     matches: &clap::ArgMatches<'_>,
     client: &Box<dyn Database>,
   ) -> Result<()> {
-    let auth = match Config::check_for_auth()? {
+    let _auth = match Config::check_for_auth()? {
       Some(auth) => auth,
       None => std::process::exit(1),
     };
@@ -102,24 +102,6 @@ impl Command {
     }
     Ok(())
   }
-}
-
-async fn trello_compile_decks(
-  config: &Config,
-  matches: &clap::ArgMatches<'_>,
-) -> Result<(Board, Vec<Deck>)> {
-  let trello = kanban::trello::TrelloClient::init(config);
-
-  let board: kanban::Board = match matches.value_of("board_id") {
-    Some(id) => trello.get_board(id).await?,
-    None => trello.select_board().await?,
-  };
-  let lists = trello.get_lists(&board.id).await?;
-  let cards = trello.get_cards(&board.id).await?;
-  let map_cards: HashMap<String, Vec<Card>> = kanban::collect_cards(cards);
-  let decks = kanban::build_decks(lists, map_cards);
-
-  Ok((board, decks))
 }
 
 async fn kanban_compile_decks(

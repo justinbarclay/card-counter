@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
 use serde::{Deserialize, Serialize};
-use std::{cmp::Ordering, convert::TryInto, fmt, time::SystemTime};
+use std::{cmp::Ordering, fmt, time::SystemTime};
 
 pub mod aws;
 pub mod azure;
@@ -35,11 +35,11 @@ impl Default for DatabaseType {
 }
 
 fn select_date(keys: &[i64]) -> Option<i64> {
-  let rev_keys: Vec<i64> = keys.into_iter().cloned().rev().collect();
+  let rev_keys: Vec<i64> = keys.iter().cloned().rev().collect();
   let items: Vec<String> = rev_keys
     .iter()
     .map(|item| {
-      NaiveDateTime::from_timestamp(item.clone().try_into().unwrap(), 0)
+      NaiveDateTime::from_timestamp(*item, 0)
         .format("%b %d, %R UTC")
         .to_string()
     })
@@ -91,19 +91,16 @@ pub type Entries = Vec<Entry>;
 pub fn get_decks_by_date(entries: Entries) -> Option<Vec<Deck>> {
   let mut keys: Vec<i64> = entries.iter().map(|entry| entry.time_stamp).collect();
 
-  keys.sort();
+  keys.sort_unstable();
   let date;
 
-  if keys.len() > 0 {
+  if !keys.is_empty() {
     date = select_date(&keys)?;
   } else {
     return None;
   }
 
-  match entries.iter().find(|entry| entry.time_stamp == date) {
-    Some(entry) => Some(entry.decks.clone()),
-    None => None,
-  }
+  entries.iter().find(|entry| entry.time_stamp == date).map(|entry| entry.decks.clone())
 }
 
 impl Entry {

@@ -107,7 +107,7 @@ pub fn init_kanban_board(
   }
 }
 
-pub fn init_kanban_board_from_config(config: &Config) -> Box<Kanban> {
+pub fn init_kanban_board_from_config(config: &Config) -> Box<dyn Kanban> {
   match config.kanban {
     config::KanbanBoard::Trello(_) => Box::new(TrelloClient::init(config)),
     config::KanbanBoard::Jira(_) => Box::new(JiraClient::init(config)),
