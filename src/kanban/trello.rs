@@ -110,10 +110,10 @@ pub fn no_authentication(auth: &TrelloAuth, response: &reqwest::Response) -> Res
   if let Err(err) = response.error_for_status_ref() {
     match err.status() {
       Some(reqwest::StatusCode::UNAUTHORIZED) => {
-        return Err(ErrorKind::InvalidAuthInformation(auth.clone()).into())
+        return Err(AuthError::Trello(auth.key.clone()).into())
       }
       // Convert private reqwest::error::Error into a trello_error
-      _ => return Err(err.to_string().into()),
+      _ => return Err(eyre!(err.to_string())),
     }
   };
   Ok(())
@@ -140,10 +140,10 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(ErrorKind::InvalidAuthInformation(self.auth.clone()).into())
+          return Err(AuthError::Trello(self.auth.key.clone()))
         }
         // Convert private reqwest::error::Error into a trello_error
-        _ => return Err(err.to_string().into()),
+        _ => return Err(eyre!(err.to_string())),
       }
     };
 
@@ -181,7 +181,7 @@ impl Kanban for TrelloClient {
       .default(0)
       .paged(true)
       .interact()
-      .chain_err(|| "There was an error while trying to select a board.")?;
+      .wrap_err_with(|| "There was an error while trying to select a board.")?;
 
     Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
   }
@@ -216,17 +216,17 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(ErrorKind::InvalidAuthInformation(self.auth.clone()).into())
+          return Err(AuthError::Trello(self.auth.key.clone()))
         }
         // Convert private reqwest::error::Error into a trello_error
-        _ => return Err(err.to_string().into()),
+        _ => return Err(eyre!(err.to_string())),
       }
     };
 
     let trello_cards: Vec<TrelloCard> = response
       .json()
       .await
-      .chain_err(|| "There was a problem parsing JSON.")?;
+      .wrap_err_with(|| "There was a problem parsing JSON.")?;
 
     Ok(trello_cards.iter().map(|card| card.into()).collect())
   }

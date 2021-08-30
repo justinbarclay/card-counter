@@ -1,5 +1,3 @@
-// `error_chain!` can recurse deeply
-#![recursion_limit = "1024"]
 use std::io::Write;
 
 use clap::{App, Arg};
@@ -170,9 +168,7 @@ async fn run() -> Result<()> {
 }
 
 // The above main gives you maximum control over how the error is
-// formatted. If you don't care (i.e. you want to display the full
-// error during an assert) you can just call the `display_chain` method
-// on the error object
+// formatted.
 #[tokio::main]
 async fn main() {
   if let Err(ref e) = run().await {

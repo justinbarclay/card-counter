@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use crate::{
   database::config::{self, Config},
-  errors::*,
+  errors::Result,
   score::{get_score, Deck},
 };
 use jira::JiraClient;
@@ -12,11 +12,6 @@ use trello::TrelloClient;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-
-// enum KanbanBoard {
-//   Trello,
-//   Jira,
-// }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Board {
