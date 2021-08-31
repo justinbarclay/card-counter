@@ -68,10 +68,8 @@ async fn create_table(client: &DynamoDbClient) -> Result<()> {
     stream_specification: None,
     tags: None,
   };
-  match client.create_table(table_params).await {
-    Ok(_) => (),
-    Err(err) => println!("{:?}", err),
-  }
+  client.create_table(table_params).await?;
+
   Ok(())
 }
 
@@ -86,11 +84,11 @@ async fn does_table_exist(client: &DynamoDbClient, table_name: String) -> Result
     Err(rusoto_core::RusotoError::Service(DescribeTableError::ResourceNotFound(_))) => Ok(false),
     Err(err) => Err(err),
   }
-  .chain_err(|| "Unable to connect to DynamoDB.")
+  .wrap_err_with(|| "Unable to connect to DynamoDB.")
 }
 
 fn to_entry(hash: &HashMap<String, AttributeValue>) -> Result<Entry> {
-  serde_dynamodb::from_hashmap(hash.clone()).chain_err(|| "Error serializing entry")
+  serde_dynamodb::from_hashmap(hash.clone()).wrap_err_with(|| "Error serializing entry")
 }
 
 /////////////////////////
@@ -108,12 +106,12 @@ impl Database for Aws {
     self
       .client
       .put_item(PutItemInput {
-        item: serde_dynamodb::to_hashmap(&entry).chain_err(|| "Unable to parse database entry")?,
+        item: serde_dynamodb::to_hashmap(&entry).wrap_err_with(|| "Unable to parse database entry")?,
         table_name: "card-counter".to_string(),
         ..Default::default()
       })
       .await
-      .chain_err(|| "Unable to add entry to DynamoDB.")?;
+      .wrap_err_with(|| "Unable to add entry to DynamoDB.")?;
 
     Ok(())
   }
@@ -127,7 +125,7 @@ impl Database for Aws {
         ..Default::default()
       })
       .await
-      .chain_err(|| "Error getting all decks from DynamoDb")?;
+      .wrap_err_with(|| "Error getting all decks from DynamoDb")?;
 
     match scan.items {
       Some(entries) => Ok(Some(
@@ -168,12 +166,12 @@ impl Database for Aws {
         ..Default::default()
       })
       .await
-      .chain_err(|| "Unable to talk to DynamoDB")?;
+      .wrap_err_with(|| "Unable to talk to DynamoDB")?;
 
     match response.item {
       None => Ok(None),
       Some(entry) => Ok(Some(
-        serde_dynamodb::from_hashmap(entry).chain_err(|| "Error parsing entry.")?,
+        serde_dynamodb::from_hashmap(entry).wrap_err_with(|| "Error parsing entry.")?,
       )),
     }
   }
@@ -226,15 +224,18 @@ impl Database for Aws {
         ..Default::default()
       })
       .await
-      .chain_err(|| "Error while talking to dynamodb.")?;
-    let entries: Entries = query
-      .items
-      .unwrap()
-      .iter()
-      .map(to_entry)
-      .filter_map(Result::ok)
-      .collect();
+      .wrap_err_with(|| "Error while talking to dynamodb.")?;
 
+    let entries: Entries = match query.items{
+      Some(items) => {
+        items
+          .iter()
+          .map(to_entry)
+          .filter_map(Result::ok)
+          .collect()
+      },
+      None => return Ok(None)
+    };
     Ok(Some(entries))
   }
 }
@@ -260,11 +261,11 @@ impl Aws {
           "Unable to find \"card-counter\" table in DynamoDB. Would you like to create a table?",
         )
         .interact()
-        .chain_err(|| "There was a problem registering your response.")?
+        .wrap_err_with(|| "There was a problem registering your response.")?
       {
         true => create_table(&aws.client).await?,
         false => {
-          println! {"Unable to update or query table."}
+          eprintln! {"Unable to update or query table."}
           ::std::process::exit(1);
         }
       }
