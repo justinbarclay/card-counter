@@ -106,7 +106,8 @@ impl Database for Aws {
     self
       .client
       .put_item(PutItemInput {
-        item: serde_dynamodb::to_hashmap(&entry).wrap_err_with(|| "Unable to parse database entry")?,
+        item: serde_dynamodb::to_hashmap(&entry)
+          .wrap_err_with(|| "Unable to parse database entry")?,
         table_name: "card-counter".to_string(),
         ..Default::default()
       })
@@ -226,15 +227,9 @@ impl Database for Aws {
       .await
       .wrap_err_with(|| "Error while talking to dynamodb.")?;
 
-    let entries: Entries = match query.items{
-      Some(items) => {
-        items
-          .iter()
-          .map(to_entry)
-          .filter_map(Result::ok)
-          .collect()
-      },
-      None => return Ok(None)
+    let entries: Entries = match query.items {
+      Some(items) => items.iter().map(to_entry).filter_map(Result::ok).collect(),
+      None => return Ok(None),
     };
     Ok(Some(entries))
   }

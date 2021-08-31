@@ -182,7 +182,8 @@ impl Database for JSON {
 impl JSON {
   pub fn init() -> Result<Self> {
     // No Sane default: if we can't get the database we need to error out to the use
-    let file = database_file().wrap_err_with(|| "Unable to open database at $HOME/.card-counter")?;
+    let file =
+      database_file().wrap_err_with(|| "Unable to open database at $HOME/.card-counter")?;
     let reader = BufReader::new(&file);
 
     // We need to know the length of the file or we could erroneously toss a JSON error.
@@ -214,7 +215,8 @@ impl JSON {
     file.set_len(0)?;
     let mut writer = BufWriter::new(file);
     // There is no safe default behavior we can perform here.
-    let json = serde_json::to_string(&self.database).wrap_err_with(|| "Unable to parse database")?;
+    let json =
+      serde_json::to_string(&self.database).wrap_err_with(|| "Unable to parse database")?;
 
     // No Sane default: IO Errors if we can't move around the file
     writer

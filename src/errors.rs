@@ -16,7 +16,7 @@ pub enum AuthError {
   Trello(String),
   Jira(String),
 }
-impl Error for AuthError{}
+impl Error for AuthError {}
 
 impl fmt::Display for AuthError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

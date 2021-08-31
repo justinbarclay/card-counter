@@ -79,7 +79,7 @@ impl Database for Azure {
       .create_document()
       .execute_with_partition_key(&document, &document.document.board_id)
       .await
-      .wrap_err_with(||"Unable to add entry")?;
+      .wrap_err_with(|| "Unable to add entry")?;
 
     Ok(())
   }
@@ -93,7 +93,7 @@ impl Database for Azure {
       .list_documents()
       .execute::<CosmosEntry>()
       .await
-      .wrap_err_with(||"Unable to get documents from CosmoDB")?
+      .wrap_err_with(|| "Unable to get documents from CosmoDB")?
       .documents;
 
     let entries: Entries = documents
@@ -161,8 +161,8 @@ impl Azure {
   // to have things flow nicely right now.
   pub async fn init(config: &Config) -> Result<Self> {
     let auth = match auth_from_env() {
-     Some(auth) => auth,
-      None => return Err(eyre!("Unable to find Azure Master Key"))
+      Some(auth) => auth,
+      None => return Err(eyre!("Unable to find Azure Master Key")),
     };
     let auth_token = permission::AuthorizationToken::primary_from_base64(
       auth.get("COSMOS_MASTER_KEY").unwrap_or(&"".to_string()),
@@ -178,10 +178,12 @@ impl Azure {
     let database_details = config.database_configuration.as_ref().ok_or(eyre!("No details set for Azure database in config file. Please run 'card-counter config' to set database and container names."))?;
     let azure = Azure {
       client,
-      database_name: database_details.database_name.clone()
-        .ok_or(eyre!("No database name set. Please run 'card-counter config' to set the database name"))?,
-      collection_name: database_details.container_name.clone()
-        .ok_or(eyre!("No container name set. Please run 'card-counter config' to set the container name"))?
+      database_name: database_details.database_name.clone().ok_or(eyre!(
+        "No database name set. Please run 'card-counter config' to set the database name"
+      ))?,
+      collection_name: database_details.container_name.clone().ok_or(eyre!(
+        "No container name set. Please run 'card-counter config' to set the container name"
+      ))?,
     };
 
     let db_exist = does_database_exist(&azure).await?;
@@ -298,7 +300,7 @@ async fn does_collection_exist(azure: &Azure, name: &str) -> Result<bool> {
     .execute()
     .await
     .wrap_err_with(|| "There was an error talking to CosmosDB")?
-  .collections;
+    .collections;
 
   match collections.iter().find_map(|collecation| {
     if collecation.id == name {

@@ -140,7 +140,7 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(AuthError::Trello(self.auth.key.clone()))
+          return Err(AuthError::Trello(self.auth.key.clone()).into())
         }
         // Convert private reqwest::error::Error into a trello_error
         _ => return Err(eyre!(err.to_string())),
@@ -216,7 +216,7 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(AuthError::Trello(self.auth.key.clone()))
+          return Err(AuthError::Trello(self.auth.key.clone()).into())
         }
         // Convert private reqwest::error::Error into a trello_error
         _ => return Err(eyre!(err.to_string())),
