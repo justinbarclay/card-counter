@@ -216,7 +216,7 @@ impl Kanban for JiraClient {
       .interact()
       .wrap_err_with(|| "There was an error while trying to select a board.")?;
 
-    Ok(boards.get(&board_names[name_index])?.to_owned())
+    Ok(boards.get(&board_names[name_index]).ok_or(eyre!("There was an error fetching selected board"))?.to_owned())
   }
 
   async fn get_lists(&self, board_id: &str) -> Result<Vec<List>> {

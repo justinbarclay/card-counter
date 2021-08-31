@@ -116,7 +116,7 @@ impl Database for JSON {
         let mut timestamps = HashMap::new();
         timestamps
           .insert(entry.time_stamp, entry.decks)
-          .ok_or(|| eyre!("Unable to add entry to JSON."))?;
+          .ok_or(eyre!("Unable to add entry to JSON."))?;
         json.database.insert(entry.board_id, timestamps);
       }
     };
