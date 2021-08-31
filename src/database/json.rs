@@ -57,7 +57,7 @@ fn find_or_create_main_dir() -> Result<PathBuf> {
 
   if !(path.exists() && path.is_dir()) {
     fs::create_dir(path.clone())
-      .chain_err(|| "Unable to create .card-counter directory in $HOME")?;
+      .wrap_err_with(|| "Unable to create .card-counter directory in $HOME")?;
   }
 
   Ok(path)
@@ -116,7 +116,7 @@ impl Database for JSON {
         let mut timestamps = HashMap::new();
         timestamps
           .insert(entry.time_stamp, entry.decks)
-          .chain_err(|| "Unable to add entry to JSON.")?;
+          .ok_or(|| eyre!("Unable to add entry to JSON."))?;
         json.database.insert(entry.board_id, timestamps);
       }
     };
@@ -182,14 +182,14 @@ impl Database for JSON {
 impl JSON {
   pub fn init() -> Result<Self> {
     // No Sane default: if we can't get the database we need to error out to the use
-    let file = database_file().chain_err(|| "Unable to open database at $HOME/.card-counter")?;
+    let file = database_file().wrap_err_with(|| "Unable to open database at $HOME/.card-counter")?;
     let reader = BufReader::new(&file);
 
     // We need to know the length of the file or we could erroneously toss a JSON error.
     // We should error out if we can't read metadata.
     if file
       .metadata()
-      .chain_err(|| "Unable to read metadata for $HOME/.card-counter/database.json.")?
+      .wrap_err_with(|| "Unable to read metadata for $HOME/.card-counter/database.json.")?
       .len()
       == 0
     {
@@ -199,7 +199,7 @@ impl JSON {
       // want to overwrite user data
       Ok(JSON {
         database: serde_json::from_reader(reader)
-          .chain_err(|| "Unable to parse database file as json")?,
+          .wrap_err_with(|| "Unable to parse database file as json")?,
       })
     }
   }
@@ -208,21 +208,21 @@ impl JSON {
   /// the database file.
   fn save(&self) -> Result<()> {
     // No Sane default: We want to error if we can't open or access the File handle
-    let file = database_file().chain_err(|| "Unable to open database")?;
+    let file = database_file().wrap_err_with(|| "Unable to open database")?;
 
     // Clear out file before writing to it.
     file.set_len(0)?;
     let mut writer = BufWriter::new(file);
     // There is no safe default behavior we can perform here.
-    let json = serde_json::to_string(&self.database).chain_err(|| "Unable to parse database")?;
+    let json = serde_json::to_string(&self.database).wrap_err_with(|| "Unable to parse database")?;
 
     // No Sane default: IO Errors if we can't move around the file
     writer
       .seek(SeekFrom::Start(0))
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/database.json")?;
+      .wrap_err_with(|| "Unable to write to file $HOME/.card-counter/database.json")?;
     writer
       .write_all(json.as_bytes())
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/database.json")?;
+      .wrap_err_with(|| "Unable to write to file $HOME/.card-counter/database.json")?;
     Ok(())
   }
 }
