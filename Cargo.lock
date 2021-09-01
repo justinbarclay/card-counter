@@ -370,7 +370,7 @@ dependencies = [
 [[package]]
 name = "dialoguer"
 version = "0.8.0"
-source = "git+https://github.com/justinbarclay/dialoguer#dbcffa424c0e250200907eddf9708bddd83f6406"
+source = "git+https://github.com/justinbarclay/dialoguer#4f84c8af06b23a99170bd71d6dc0f9a73e3a8b7c"
 dependencies = [
  "console",
  "lazy_static",
@@ -448,8 +448,9 @@ checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
 
 [[package]]
 name = "drawille"
-version = "0.2.2"
-source = "git+https://github.com/apelloni/drawille-rs.git?rev=e3cb02e76c226ffdf6f6622bd4cc701a2c4c99f2#e3cb02e76c226ffdf6f6622bd4cc701a2c4c99f2"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e64e461c3f1e69d99372620640b3fd5f0309eeda2e26e4af69f6760c0e1df845"
 dependencies = [
  "colored",
  "fnv",
@@ -1257,7 +1258,7 @@ checksum = "3831453b3449ceb48b6d9c7ad7c96d5ea673e9b470a1dc578c2ce6521230884c"
 [[package]]
 name = "pointplots"
 version = "0.6.0"
-source = "git+https://github.com/justinbarclay/pointplots-rs.git?rev=a756107#a756107f27af365c416b2cd6297c34cdac59c0a8"
+source = "git+https://github.com/justinbarclay/pointplots-rs.git#b6d5e121645e1a2398e0f34fb4b5b16e5cd030a1"
 dependencies = [
  "colored",
  "drawille",

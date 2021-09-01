@@ -27,7 +27,7 @@ hyper = "0.14.4"
 clap = "2.33.0"
 dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
 prettytable-rs = "0.8"
-pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git", rev = "a756107"}
+pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git"}
 
 # Serializers/Deserializers
 serde = { version = "1.0.106", features = ["derive"] }
