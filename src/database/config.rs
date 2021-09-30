@@ -151,7 +151,7 @@ fn trello_details(kanban: KanbanBoard) -> Result<TrelloAuth> {
     .items(TRELLO_TOKEN_EXPIRATION)
     .default(0)
     .interact()
-    .chain_err(|| "There was an error while trying to set token duration.")?;
+    .wrap_err_with(|| "There was an error while trying to set token duration.")?;
 
   let expiration = TRELLO_TOKEN_EXPIRATION[expiration_index].to_string();
 
@@ -213,7 +213,7 @@ fn kanban_details(kanban: KanbanBoard) -> Result<KanbanBoard> {
     .items(&preferences)
     .default(0)
     .interact()
-    .chain_err(|| "There was an error setting your kanban preference.")?;
+    .wrap_err_with(|| "There was an error setting your kanban preference.")?;
 
   let new_auth = match preferences[choice] {
     KanbanBoard::Trello(_) => KanbanBoard::Trello(trello_details(kanban)?),
@@ -259,7 +259,7 @@ fn database_preference() -> Result<DatabaseType> {
     .items(&preferences)
     .default(0)
     .interact()
-    .chain_err(|| "There was an error setting database preference.")?;
+    .wrap_err_with(|| "There was an error setting database preference.")?;
 
   Ok(preferences[index].clone())
 }
@@ -286,7 +286,7 @@ impl Config {
 
     // No Sane default: If we can't parse as json, it might be recoverable and we don't
     // want to overwrite user data
-    serde_yaml::from_reader(reader).chain_err(|| "Unable to parse file as YAML")
+    serde_yaml::from_reader(reader).wrap_err_with(|| "Unable to parse file as YAML")
   }
 
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
@@ -308,18 +308,18 @@ impl Config {
   }
 
   pub fn persist(self) -> Result<()> {
-    let config = config_file().chain_err(|| "Unable to open config file")?;
+    let config = config_file().wrap_err_with(|| "Unable to open config file")?;
     config.set_len(0)?;
     let mut writer = BufWriter::new(config);
 
-    let json = serde_yaml::to_string(&self).chain_err(|| "Unable to parse config")?;
+    let json = serde_yaml::to_string(&self).wrap_err_with(|| "Unable to parse config")?;
 
     writer
       .seek(SeekFrom::Start(0))
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
+      .wrap_err_with(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
     writer
       .write_all(json.as_bytes())
-      .chain_err(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
+      .wrap_err_with(|| "Unable to write to file $HOME/.card-counter/card-counter.yaml")?;
     Ok(())
   }
 

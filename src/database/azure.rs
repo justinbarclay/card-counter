@@ -1,21 +1,18 @@
 use crate::{
   database::{config::Config, Database, Entries, Entry},
+  errors::*,
   score::Deck,
 };
 use azure_cosmos::prelude::{collection::*, *};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env};
 
+use async_trait::async_trait;
+
 /*
 Structures for serializing and de-serializing responses from Azure.
 */
-use crate::errors::*;
 
-use async_trait::async_trait;
-
-// async fn query_azure() -> Result<()> {
-//   let authorization_token = AuthorizationToken::new_master(&master_key)?;
-// }
 pub struct Azure {
   client: CosmosClient,
   database_name: String,
@@ -82,10 +79,7 @@ impl Database for Azure {
       .create_document()
       .execute_with_partition_key(&document, &document.document.board_id)
       .await
-      .map_err(|e| {
-        eprintln!("{:?}", e);
-        "Unable to add entry"
-      })?;
+      .wrap_err_with(|| "Unable to add entry")?;
 
     Ok(())
   }
@@ -99,11 +93,9 @@ impl Database for Azure {
       .list_documents()
       .execute::<CosmosEntry>()
       .await
-      .map_err(|e| {
-        eprintln!("{:?}", e);
-        "Unable to get documents from CosmoDB"
-      })?
+      .wrap_err_with(|| "Unable to get documents from CosmoDB")?
       .documents;
+
     let entries: Entries = documents
       .iter()
       .map(|doc| Entry::from(doc.document.clone()))
@@ -125,10 +117,8 @@ impl Database for Azure {
         board_name, time_stamp
       ))
       .await
-      .map_err(|e| {
-        eprintln!("{:?}", e);
-        "Unable to get documents from CosmoDB"
-      })?.into_raw().results;
+      .wrap_err_with(||"Unable to get documents from CosmoDB")?.into_raw().results;
+
     if let Some(cosmo_entry) = results.first() {
       Ok(Some(Entry::from(cosmo_entry.to_owned())))
     } else {
@@ -159,10 +149,7 @@ impl Database for Azure {
       .parallelize_cross_partition_query(true)
       .execute::<CosmosEntry, _>(&query)
       .await
-      .map_err(|e| {
-        eprintln!("{:?}", e);
-        "Unable to get documents from CosmoDB"
-      })?
+      .wrap_err_with(|| "Unable to get documents from CosmoDB")?
       .into_raw()
       .results;
 
@@ -173,11 +160,14 @@ impl Azure {
   // I _hate_ this method. But ErrorChain is not working so it's hard
   // to have things flow nicely right now.
   pub async fn init(config: &Config) -> Result<Self> {
-    let auth = auth_from_env().chain_err(|| "Unable to find Azure Master Key")?;
+    let auth = match auth_from_env() {
+      Some(auth) => auth,
+      None => return Err(eyre!("Unable to find Azure Master Key")),
+    };
     let auth_token = permission::AuthorizationToken::primary_from_base64(
       auth.get("COSMOS_MASTER_KEY").unwrap_or(&"".to_string()),
     )
-    .chain_err(|| "Unable to parse primary token")?;
+    .wrap_err_with(|| "Unable to parse primary token")?;
     let account_name = match auth.get("COSMOS_ACCOUNT") {
       Some(v) => v.clone(),
       None => "".to_string(),
@@ -185,19 +175,15 @@ impl Azure {
 
     let client = CosmosClient::new(account_name, auth_token, CosmosOptions::default());
 
-    let database_details = config.database_configuration.as_ref().chain_err(|| "No details set for Azure database in config file. Please run 'card-counter config' to set database and container names.")?;
+    let database_details = config.database_configuration.as_ref().ok_or_else(|| eyre!("No details set for Azure database in config file. Please run 'card-counter config' to set database and container names."))?;
     let azure = Azure {
       client,
-      database_name: database_details
-        .database_name
-        .as_ref()
-        .chain_err(|| {
-          "No database name set. Please run 'card-counter config' to set the database name"
-        })?
-        .clone(),
-      collection_name: database_details.container_name.clone().chain_err(|| {
+      database_name: database_details.database_name.clone().ok_or_else(|| eyre!(
+        "No database name set. Please run 'card-counter config' to set the database name"
+      ))?,
+      collection_name: database_details.container_name.clone().ok_or_else(|| eyre!(
         "No container name set. Please run 'card-counter config' to set the container name"
-      })?,
+      ))?,
     };
 
     let db_exist = does_database_exist(&azure).await?;
@@ -207,7 +193,7 @@ impl Azure {
           "Unable to find \"card-counter\" database in CosmosDB. Would you like to create a database?",
         )
         .interact()
-        .chain_err(|| "There was a problem registering your response.")?
+        .wrap_err_with(|| "There was a problem registering your response.")?
       {
         true => azure.create_database().await?,
         false => {
@@ -224,7 +210,7 @@ impl Azure {
           "Unable to find \"card-counter\" collection in CosmosDB. Would you like to create collection?",
         )
         .interact()
-        .chain_err(|| "There was a problem registering your response.")?
+        .wrap_err_with(|| "There was a problem registering your response.")?
       {
         true => azure.create_collection().await?,
         false => {
@@ -265,7 +251,7 @@ impl Azure {
         CreateCollectionOptions::new("/board_id").indexing_policy(ip),
       )
       .await
-      .map_err(|_| "Unable to create CosmosDB collection.")?;
+      .wrap_err_with(|| "Unable to create CosmosDB collection.")?;
 
     Ok(())
   }
@@ -279,7 +265,7 @@ impl Azure {
         CreateDatabaseOptions::new(),
       )
       .await
-      .map_err(|_| "Unable to create Cosmos DB")?;
+      .wrap_err_with(|| "Unable to create Cosmos DB")?;
     Ok(())
   }
 }
@@ -290,7 +276,7 @@ async fn does_database_exist(azure: &Azure) -> Result<bool> {
     .list_databases()
     .execute()
     .await
-    .map_err(|e| format!("Unable to connect to Azure CosmosDB\n {}", e))?
+    .wrap_err_with(|| "Unable to connect to Azure CosmosDB")?
     .databases;
 
   match databases.iter().find_map(|database| {
@@ -313,7 +299,7 @@ async fn does_collection_exist(azure: &Azure, name: &str) -> Result<bool> {
     .list_collections()
     .execute()
     .await
-    .map_err(|_| "There was an error talking to CosmosDB")?
+    .wrap_err_with(|| "There was an error talking to CosmosDB")?
     .collections;
 
   match collections.iter().find_map(|collecation| {

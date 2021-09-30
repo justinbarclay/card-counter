@@ -1,7 +1,3 @@
-// `error_chain!` can recurse deeply
-#![recursion_limit = "1024"]
-use std::io::Write;
-
 use clap::{App, Arg};
 
 use card_counter::{
@@ -170,27 +166,9 @@ async fn run() -> Result<()> {
 }
 
 // The above main gives you maximum control over how the error is
-// formatted. If you don't care (i.e. you want to display the full
-// error during an assert) you can just call the `display_chain` method
-// on the error object
+// formatted.
 #[tokio::main]
-async fn main() {
-  if let Err(ref e) = run().await {
-    let stderr = &mut ::std::io::stderr();
-    let errmsg = "Error writing to stderr";
-
-    writeln!(stderr, "error: {}", e).expect(errmsg);
-
-    for e in e.iter().skip(1) {
-      writeln!(stderr, "caused by: {}", e).expect(errmsg);
-    }
-
-    // The backtrace is not always generated. Try to run this example
-    // with `RUST_BACKTRACE=1`.
-    if let Some(backtrace) = e.backtrace() {
-      writeln!(stderr, "backtrace: {:?}", backtrace).expect(errmsg);
-    }
-
-    ::std::process::exit(1);
-  }
+async fn main() -> Result<()> {
+  run().await?;
+  Ok(())
 }

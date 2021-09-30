@@ -13,13 +13,6 @@ use dialoguer::Select;
 use reqwest;
 use serde::{Deserialize, Serialize};
 
-// Unofficial struct to hold the key and token for working with the trello api
-#[derive(Clone, Debug)]
-struct Auth {
-  pub key: String,
-  pub token: String,
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TrelloAuth {
   pub key: String,
@@ -110,10 +103,10 @@ pub fn no_authentication(auth: &TrelloAuth, response: &reqwest::Response) -> Res
   if let Err(err) = response.error_for_status_ref() {
     match err.status() {
       Some(reqwest::StatusCode::UNAUTHORIZED) => {
-        return Err(ErrorKind::InvalidAuthInformation(auth.clone()).into())
+        return Err(AuthError::Trello(auth.key.clone()).into())
       }
       // Convert private reqwest::error::Error into a trello_error
-      _ => return Err(err.to_string().into()),
+      _ => return Err(eyre!(err.to_string())),
     }
   };
   Ok(())
@@ -140,10 +133,10 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(ErrorKind::InvalidAuthInformation(self.auth.clone()).into())
+          return Err(AuthError::Trello(self.auth.key.clone()).into())
         }
         // Convert private reqwest::error::Error into a trello_error
-        _ => return Err(err.to_string().into()),
+        _ => return Err(eyre!(err.to_string())),
       }
     };
 
@@ -163,7 +156,10 @@ impl Kanban for TrelloClient {
     // TODO: Handle this better
     // maybe create a custom error types for status codes?
 
-    let result: Vec<Board> = response.json().await?;
+    let result: Vec<Board> = response
+      .json()
+      .await
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     // Storing it as a hash-map, so we can easily retrieve and return the id
     let boards: HashMap<String, Board> =
@@ -181,7 +177,7 @@ impl Kanban for TrelloClient {
       .default(0)
       .paged(true)
       .interact()
-      .chain_err(|| "There was an error while trying to select a board.")?;
+      .wrap_err_with(|| "There was an error while trying to select a board.")?;
 
     Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
   }
@@ -197,7 +193,10 @@ impl Kanban for TrelloClient {
 
     no_authentication(&self.auth, &response)?;
 
-    let lists: Vec<TrelloList> = response.json().await?;
+    let lists: Vec<TrelloList> = response
+      .json()
+      .await
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     Ok(trello_to_lists(lists))
   }
@@ -216,17 +215,17 @@ impl Kanban for TrelloClient {
     if let Err(err) = response.error_for_status_ref() {
       match err.status() {
         Some(reqwest::StatusCode::UNAUTHORIZED) => {
-          return Err(ErrorKind::InvalidAuthInformation(self.auth.clone()).into())
+          return Err(AuthError::Trello(self.auth.key.clone()).into())
         }
         // Convert private reqwest::error::Error into a trello_error
-        _ => return Err(err.to_string().into()),
+        _ => return Err(eyre!(err.to_string())),
       }
     };
 
     let trello_cards: Vec<TrelloCard> = response
       .json()
       .await
-      .chain_err(|| "There was a problem parsing JSON.")?;
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     Ok(trello_cards.iter().map(|card| card.into()).collect())
   }

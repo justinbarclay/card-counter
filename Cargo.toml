@@ -14,7 +14,7 @@ path = "src/bin/main.rs"
 chrono = "0.4.11"
 regex = "1.3.6"
 dirs = "2.0"
-error-chain = "0.12.4"
+eyre = ">=0.6.5"
 
 # Asynchronous Networking
 tokio = { version = "1.3.0", features = ["macros"] }
@@ -27,7 +27,7 @@ hyper = "0.14.4"
 clap = "2.33.0"
 dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
 prettytable-rs = "0.8"
-pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git", rev = "a756107"}
+pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git"}
 
 # Serializers/Deserializers
 serde = { version = "1.0.106", features = ["derive"] }

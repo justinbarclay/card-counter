@@ -177,11 +177,11 @@ impl Kanban for JiraClient {
       .get(&route)
       .basic_auth(&self.auth.username, Some(&self.auth.token))
       .send()
-      .await
-      .unwrap()
+      .await?
       .json()
       .await
-      .unwrap();
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
+
     Ok(board.into())
   }
 
@@ -193,8 +193,8 @@ impl Kanban for JiraClient {
       .get(&route)
       .basic_auth(&self.auth.username, Some(&self.auth.token))
       .send()
-      .await
-      .unwrap();
+      .await?;
+
     let result: PagedBoards = response.json().await?;
 
     // Storing it as a hash-map, so we can easily retrieve and return the id
@@ -215,9 +215,14 @@ impl Kanban for JiraClient {
       .default(0)
       .paged(true)
       .interact()
-      .chain_err(|| "There was an error while trying to select a board.")?;
+      .wrap_err_with(|| "There was an error while trying to select a board.")?;
 
-    Ok(boards.get(&board_names[name_index]).unwrap().to_owned())
+    Ok(
+      boards
+        .get(&board_names[name_index])
+        .ok_or_else(|| eyre!("There was an error fetching selected board"))?
+        .to_owned(),
+    )
   }
 
   async fn get_lists(&self, board_id: &str) -> Result<Vec<List>> {
@@ -230,11 +235,10 @@ impl Kanban for JiraClient {
       .get(&route)
       .basic_auth(&self.auth.username, Some(&self.auth.token))
       .send()
-      .await
-      .unwrap()
+      .await?
       .json()
       .await
-      .unwrap();
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
 
     Ok(config.into())
   }
@@ -249,11 +253,10 @@ impl Kanban for JiraClient {
       .get(&route)
       .basic_auth(&self.auth.username, Some(&self.auth.token))
       .send()
-      .await
-      .unwrap()
+      .await?
       .json()
       .await
-      .unwrap();
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
 
     Ok(response.issues.iter().map(|issue| issue.into()).collect())
   }

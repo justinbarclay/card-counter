@@ -1,5 +1,4 @@
-use crate::errors::*;
-use crate::score::Deck;
+use crate::{errors::*, score::Deck};
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use dialoguer::Select;
@@ -112,7 +111,7 @@ impl Entry {
     Ok(
       SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .chain_err(|| "Unable to get UNIX time.")?
+        .wrap_err_with(|| "Unable to get UNIX time.")?
         .as_secs() as i64,
     )
   }
