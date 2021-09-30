@@ -163,7 +163,10 @@ impl Kanban for TrelloClient {
     // TODO: Handle this better
     // maybe create a custom error types for status codes?
 
-    let result: Vec<Board> = response.json().await?;
+    let result: Vec<Board> = response
+      .json()
+      .await
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     // Storing it as a hash-map, so we can easily retrieve and return the id
     let boards: HashMap<String, Board> =
@@ -197,7 +200,10 @@ impl Kanban for TrelloClient {
 
     no_authentication(&self.auth, &response)?;
 
-    let lists: Vec<TrelloList> = response.json().await?;
+    let lists: Vec<TrelloList> = response
+      .json()
+      .await
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     Ok(trello_to_lists(lists))
   }
@@ -226,7 +232,7 @@ impl Kanban for TrelloClient {
     let trello_cards: Vec<TrelloCard> = response
       .json()
       .await
-      .wrap_err_with(|| "There was a problem parsing JSON.")?;
+      .map_err(|_e| JsonParseError("Trello".to_string()))?;
 
     Ok(trello_cards.iter().map(|card| card.into()).collect())
   }

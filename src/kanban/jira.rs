@@ -179,7 +179,8 @@ impl Kanban for JiraClient {
       .send()
       .await?
       .json()
-      .await?;
+      .await
+      .map_err(|_e| JsonParseError(e.to_string()))?;
 
     Ok(board.into())
   }
@@ -236,7 +237,8 @@ impl Kanban for JiraClient {
       .send()
       .await?
       .json()
-      .await?;
+      .await
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
 
     Ok(config.into())
   }
@@ -253,7 +255,8 @@ impl Kanban for JiraClient {
       .send()
       .await?
       .json()
-      .await?;
+      .await
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
 
     Ok(response.issues.iter().map(|issue| issue.into()).collect())
   }
