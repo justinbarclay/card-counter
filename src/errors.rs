@@ -1,7 +1,7 @@
 pub use eyre::{eyre, Context, Result};
 use std::{
   error::Error,
-  fmt::{self, write},
+  fmt::self,
   write,
 };
 

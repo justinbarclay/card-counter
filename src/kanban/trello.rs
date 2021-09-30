@@ -13,13 +13,6 @@ use dialoguer::Select;
 use reqwest;
 use serde::{Deserialize, Serialize};
 
-// Unofficial struct to hold the key and token for working with the trello api
-#[derive(Clone, Debug)]
-struct Auth {
-  pub key: String,
-  pub token: String,
-}
-
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TrelloAuth {
   pub key: String,

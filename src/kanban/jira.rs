@@ -180,7 +180,7 @@ impl Kanban for JiraClient {
       .await?
       .json()
       .await
-      .map_err(|_e| JsonParseError(e.to_string()))?;
+      .map_err(|_e| JsonParseError("Jira".to_string()))?;
 
     Ok(board.into())
   }
@@ -220,7 +220,7 @@ impl Kanban for JiraClient {
     Ok(
       boards
         .get(&board_names[name_index])
-        .ok_or(eyre!("There was an error fetching selected board"))?
+        .ok_or_else(|| eyre!("There was an error fetching selected board"))?
         .to_owned(),
     )
   }

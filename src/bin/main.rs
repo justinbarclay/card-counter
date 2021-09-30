@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use clap::{App, Arg};
 
 use card_counter::{
