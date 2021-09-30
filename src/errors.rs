@@ -23,10 +23,12 @@ impl fmt::Display for AuthError {
     match self{
       AuthError::Trello(token) =>
         write!(f, "401 Unauthorized
+Unauthorized request to Trello API
 Please regenerate your Trello API token
 https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}", token)
     ,
-      _ => write!(f, "Unknown auth error")
+      AuthError::Jira(_info) => write!(f, "401 Unauthorized
+Unauthorized request to Jira API")
       }
   }
 }
