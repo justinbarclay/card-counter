@@ -94,6 +94,7 @@ impl Command {
     match matches.value_of("output") {
       Some("ascii") => burndown.as_ascii().unwrap(),
       Some("csv") => println!("{}", burndown.as_csv().join("\n")),
+      Some("svg") => burndown.as_svg().unwrap(),
       Some(option) => println!("Output option {} not supported", option),
       None => println!("{}", burndown.as_csv().join("\n")),
     }

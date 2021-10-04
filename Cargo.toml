@@ -28,6 +28,7 @@ clap = "2.33.0"
 dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
 prettytable-rs = "0.8"
 pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git"}
+tera = "1.12.1"
 
 # Serializers/Deserializers
 serde = { version = "1.0.106", features = ["derive"] }

@@ -178,12 +178,12 @@ impl Azure {
     let database_details = config.database_configuration.as_ref().ok_or_else(|| eyre!("No details set for Azure database in config file. Please run 'card-counter config' to set database and container names."))?;
     let azure = Azure {
       client,
-      database_name: database_details.database_name.clone().ok_or_else(|| eyre!(
-        "No database name set. Please run 'card-counter config' to set the database name"
-      ))?,
-      collection_name: database_details.container_name.clone().ok_or_else(|| eyre!(
-        "No container name set. Please run 'card-counter config' to set the container name"
-      ))?,
+      database_name: database_details.database_name.clone().ok_or_else(|| {
+        eyre!("No database name set. Please run 'card-counter config' to set the database name")
+      })?,
+      collection_name: database_details.container_name.clone().ok_or_else(|| {
+        eyre!("No container name set. Please run 'card-counter config' to set the container name")
+      })?,
     };
 
     let db_exist = does_database_exist(&azure).await?;

@@ -1,10 +1,12 @@
-use core::fmt;
-
 use crate::database::Entry;
+use core::fmt;
+use serde::{Serialize, Serializer};
 
 use pointplots::{Chart, PixelColor, Plot, Point, Shape};
 
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+
+use tera::{Context, Tera};
 
 #[derive(Clone)]
 struct Timestamp(f64);
@@ -21,6 +23,12 @@ impl From<Timestamp> for f64 {
   }
 }
 
+impl From<&Timestamp> for f64 {
+  fn from(timestamp: &Timestamp) -> Self {
+    timestamp.0
+  }
+}
+
 impl<T: TimeZone> From<DateTime<T>> for Timestamp {
   fn from(date: DateTime<T>) -> Self {
     Timestamp(date.timestamp() as f64)
@@ -31,6 +39,15 @@ impl fmt::Display for Timestamp {
   fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
     let date = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(self.0 as i64, 0), Utc);
     f.write_fmt(format_args!("{}", date.format("%Y-%m-%d")))
+  }
+}
+
+impl Serialize for Timestamp {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    serializer.serialize_str(&format!("{}", &self))
   }
 }
 
@@ -171,49 +188,17 @@ impl Burndown {
     let start_date: DateTime<Utc> = self.0.first().unwrap().0;
     let end_date: DateTime<Utc> = self.0.last().unwrap().0;
 
-    let max_complete: i32 = *self
-      .0
-      .iter()
-      .map(|(_, completed, _)| completed)
-      .max()
-      .unwrap();
+    let max_complete: i32 = self.max_complete();
 
-    let max_incomplete: i32 = *self
-      .0
-      .iter()
-      .map(|(_, _, incomplete)| incomplete)
-      .max()
-      .unwrap();
+    let max_incomplete: i32 = self.max_incomplete();
 
-    let max = max_complete.max(max_incomplete) as f64;
-    println!("Max: {}", max);
+    let max_y = max_complete.max(max_incomplete) as f64;
 
-    let incomplete: Vec<Point<Timestamp, f64>> = self
-      .0
-      .iter()
-      .map(|(date, incompleted, _)| -> Point<Timestamp, f64> {
-        {
-          Point {
-            x: date.to_owned().into(),
-            y: *incompleted as f64,
-          }
-        }
-      })
-      .collect();
+    let incomplete: Vec<Point<Timestamp, f64>> = self.incomplete_as_points();
 
-    let complete: Vec<Point<Timestamp, f64>> = self
-      .0
-      .iter()
-      .map(|(date, _, complete)| -> Point<Timestamp, f64> {
-        {
-          Point {
-            x: date.to_owned().into(),
-            y: *complete as f64,
-          }
-        }
-      })
-      .collect();
+    let complete: Vec<Point<Timestamp, f64>> = self.complete_as_points();
 
+    println!("Max: {}", max_y);
     println!("\nBurndown Chart\n");
     Chart::new(
       120,
@@ -234,5 +219,130 @@ impl Burndown {
     .display();
 
     Ok(())
+  }
+
+  pub fn as_svg(&self) -> Result<(), ()> {
+    let mut context = Context::new();
+
+    //hardset the padding around the graph
+    let padding = 50;
+
+    //ensure the viewbox is as per input
+    let width = 900 - padding * 2;
+    let height = 600 - padding * 2;
+
+    let max_complete: i32 = self.max_complete();
+    let max_incomplete: i32 = self.max_incomplete();
+
+    let max_y: f64 = max_complete.max(max_incomplete).into();
+    let min_x = self.min_date().timestamp() as f64;
+    let max_x = self.max_date().timestamp() as f64;
+
+    let point_to_path = |index: usize, point: &Point<Timestamp, f64>| -> String {
+      let x = (f64::from(&point.x) - min_x) / (max_x - min_x) * width as f64 + padding as f64;
+      let y = point.y / max_y * (height as f64 * -1.0) + height as f64 + padding as f64;
+      if index == 0 {
+        format!("M {} {}", x, y)
+      } else {
+        format!("L {} {}", x, y)
+      }
+    };
+
+    let incomplete_path = &self
+      .incomplete_as_points()
+      .iter()
+      .enumerate()
+      .map(|(i, path)| point_to_path(i, path))
+      .collect::<Vec<String>>()
+      .join(" ");
+
+    let complete_path = self
+      .complete_as_points()
+      .iter()
+      .enumerate()
+      .map(|(i, path)| point_to_path(i, path))
+      .collect::<Vec<String>>()
+      .join(" ");
+
+    context.insert("name", "Burndown");
+    context.insert("width", &width);
+    context.insert("height", &height);
+    context.insert("padding", &padding);
+    context.insert("incomplete_path", &incomplete_path);
+    context.insert("incomplete_colour", "#D2222D");
+    context.insert("complete_path", &complete_path);
+    context.insert("complete_colour", "#238823");
+    context.insert("max_y", &max_y);
+    context.insert("y_labels", &[0., (max_y / 2.).round(), max_y]);
+
+    let mid_date = (max_x - min_x) / 2. + min_x;
+    context.insert(
+      "x_labels",
+      &[
+        Timestamp::from(min_x),
+        Timestamp::from(mid_date),
+        Timestamp::from(max_x),
+      ],
+    );
+
+    let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)
+      .expect("Could not draw graph");
+    print!("{}", graph);
+    Ok(())
+  }
+
+  fn max_date(&self) -> DateTime<Utc> {
+    *self.0.iter().map(|(date, _, _)| date).max().unwrap()
+  }
+
+  fn min_date(&self) -> DateTime<Utc> {
+    *self.0.iter().map(|(date, _, _)| date).min().unwrap()
+  }
+
+  fn max_complete(&self) -> i32 {
+    *self
+      .0
+      .iter()
+      .map(|(_, completed, _)| completed)
+      .max()
+      .unwrap()
+  }
+  fn max_incomplete(&self) -> i32 {
+    *self
+      .0
+      .iter()
+      .map(|(_, _, incompleted)| incompleted)
+      .max()
+      .unwrap()
+  }
+
+  fn incomplete_as_points(&self) -> Vec<Point<Timestamp, f64>> {
+    self
+      .0
+      .iter()
+      .map(|(date, incompleted, _)| -> Point<Timestamp, f64> {
+        {
+          Point {
+            x: date.to_owned().into(),
+            y: *incompleted as f64,
+          }
+        }
+      })
+      .collect()
+  }
+
+  fn complete_as_points(&self) -> Vec<Point<Timestamp, f64>> {
+    self
+      .0
+      .iter()
+      .map(|(date, _, complete)| -> Point<Timestamp, f64> {
+        {
+          Point {
+            x: date.to_owned().into(),
+            y: *complete as f64,
+          }
+        }
+      })
+      .collect()
   }
 }
