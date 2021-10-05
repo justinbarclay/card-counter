@@ -117,7 +117,7 @@ fn cli<'a>() -> clap::ArgMatches<'a> {
             .long("output")
             .value_name("OUTPUT")
             .help("Filters out all lists with a name that contains the substring FILTER")
-            .possible_values(&["ascii", "csv"])
+            .possible_values(&["ascii", "csv", "svg"])
             .default_value("csv")
             .takes_value(true),
         ),

@@ -67,10 +67,6 @@ impl Command {
     matches: &clap::ArgMatches<'_>,
     client: &Box<dyn Database>,
   ) -> Result<()> {
-    let _auth = match Config::check_for_auth()? {
-      Some(auth) => auth,
-      None => std::process::exit(1),
-    };
     let start_str = matches.value_of("start").expect("Missing start argument");
     let end_str = matches.value_of("end").expect("Missing end argument");
 
@@ -94,6 +90,7 @@ impl Command {
     match matches.value_of("output") {
       Some("ascii") => burndown.as_ascii().unwrap(),
       Some("csv") => println!("{}", burndown.as_csv().join("\n")),
+      Some("svg") => burndown.as_svg().unwrap(),
       Some(option) => println!("Output option {} not supported", option),
       None => println!("{}", burndown.as_csv().join("\n")),
     }

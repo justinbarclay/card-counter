@@ -1,9 +1,5 @@
 pub use eyre::{eyre, Context, Result};
-use std::{
-  error::Error,
-  fmt::self,
-  write,
-};
+use std::{error::Error, fmt, write};
 
 #[derive(Debug)]
 pub enum AuthError {

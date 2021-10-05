@@ -1,0 +1,74 @@
+<?xml version="1.0" standalone="no"?>
+<svg width="{{width + padding * 2 + 25}}"
+     height="{{height + padding * 2}}"
+     viewBox="0 0 {{width + padding}} {{height + padding *2}}"
+     preserveAspectRatio="xMidYMid meet"
+     xmlns="http://www.w3.org/2000/svg">
+  {% set y_label_length =  y_labels | length - 1 %}
+  {% for label in y_labels | reverse%}
+  {% if loop.first == true %}
+  <!-- Bottom Line-->
+  {% set offset_y = padding%}
+  <path stroke="#74838f" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  {% elif loop.last == true %}
+  <!-- Top Line -->
+  {% set offset_y = padding + height %}
+  <path stroke="#74838f" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  {% else %}
+  <!-- Dashed line-->
+  {% set offset_y = padding + loop.index0/y_label_length * height %}
+  <path stroke="#74838f" stroke-dasharray="10 6" stroke-width="0.5"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  {% endif %}
+
+  <!-- Y axis labels-->
+  <text
+    x="{{padding - 5}}"
+    font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto"
+    y="{{offset_y}}"
+    dominant-baseline="middle"
+    text-anchor="end"
+    font-size="12"
+    fill="#74838f"
+    font-weight="bold"
+    >
+    {{label | round}}
+  </text>
+  {% endfor %}
+
+  {% set x_label_length = x_labels | length - 1%}
+  {% for label in x_labels | reverse%}
+  {% set offset_x = padding + loop.index0/x_label_length * width %}
+  <!-- Bottom ticks -->
+  <path stroke="#74838f" stroke-width="2.0" d="M {{offset_x}} {{height + padding}} L {{offset_x}} {{height + padding + 10}}" />
+
+  <!-- Y axis labels-->
+  <text
+    x="{{offset_x + 30}}"
+    font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto"
+    y="{{height + padding + 20}}"
+    dominant-baseline="middle"
+    text-anchor="end"
+    font-size="12"
+    fill="#74838f"
+    font-weight="bold"
+    >
+    {{label}}
+  </text>
+  {% endfor %}
+
+  <!-- Line plots-->
+  <path stroke="{{incomplete_colour}}" stroke-linejoin="round" d="{{incomplete_path}}" stroke-width="2.0" fill="none" />
+  <path stroke="{{complete_colour}}" stroke-linejoin="round" d="{{complete_path}}" stroke-width="2.0" fill="none" />
+
+  <!-- Title -->
+  <text x="{{width/2 + padding}}"
+        y="{{padding / 2}}"
+        font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto" 
+        dominant-baseline="middle" 
+        text-anchor="middle" 
+        font-size="18" 
+        fill="#74838f" 
+        font-weight="700">
+    {{name}}
+  </text>
+</svg>
