@@ -4,7 +4,7 @@ A CLI for quickly summarizing story points in Trello lists.
 
 [[./images/card-counter.gif]]
 #+BEGIN_EXAMPLE
-card-counter 1.0.0-alpha-1
+card-counter 1.0.0-alpha-5
 Justin Barclay <justincbarclay@gmail.com>
 A CLI for quickly summarizing story points in Trello lists
 
@@ -18,8 +18,11 @@ FLAGS:
 
 OPTIONS:
     -b, --board-id <ID>          The ID of the board where the cards are meant to be counted from
-    -d, --database <DATABASE>    Choose the database you want to save current request in [possible values: local, aws]
+    -d, --database <DATABASE>    Choose the database you want to save current request in [possible values: local, aws,
+                                 azure]
     -f, --filter <FILTER>        Filters out all lists with a name that contains the substring FILTER
+    -k, --kanban <KANBAN>        The kanban API to get your board and card information from [possible values: jira,
+                                 trello]
     -s, --save <SAVE>            Save the current entry in the database [default: true]  [possible values: true, false]
 
 SUBCOMMANDS:
@@ -156,6 +159,21 @@ So for example, to extract the information from your Jira board url https://card
 export JIRA_URL=https://card-counter.atlassian.net
 card-counter --board-id 1
 #+end_src
+*** Alternative outputs
+If you don't want to use gnuplot or some other sort of graphing library, I've helpfully decided to implement both ~svg~ or ~ascii~ graphs.
+
+For ascii output you pass in the option ~--output ascii~
+#+NAME: ascii output
+#+begin_src shell
+card-counter burndown --board-id wtPNQDEV --start 2020-04-01 --end 2020-04-14 -f NoBurn --output ascii
+#+end_src
+
+... and for svg output you pass in the option ~--output svg~
+#+begin_src shell
+card-counter burndown --board-id wtPNQDEV --start 2020-04-01 --end 2020-04-14 -f NoBurn --output svg
+#+end_src
+
+Like ~csv~ both of these options print to the terminal.
 
 ** "Advanced"
 Are you forced to collaborate with others? Weirder yet, do you like to collaborate with others? Or do you just demand that everything needs to be in the cloud? If any 3 of those are correct, but especially if ALL of them are, I have the solution for you. It's card-counter cloud edition! Where we allow you to store your data in DynamoDB or CosmosDB.
