@@ -8,7 +8,7 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
 use tera::{Context, Tera};
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Timestamp(f64);
 
 impl From<f64> for Timestamp {
@@ -170,6 +170,7 @@ impl Burndown {
   /// let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1, 0), Utc);
   /// let timestamp2 = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(86401, 0), Utc);
   /// assert_eq!(vec!["Date,Incomplete,Complete", "01-01-1970,40,40", "02-01-1970,30,50"], Burndown::calculate_burndown(&entries, &None).as_csv());
+  ///```
   pub fn as_csv(&self) -> Vec<String> {
     let mut output = vec!["Date,Incomplete,Complete".to_string()];
     output.extend(self.0.iter().map(|(time, incomplete, complete)| {
@@ -184,6 +185,7 @@ impl Burndown {
     output
   }
 
+  /// Generates an ASCII graph of the Burndown struct and prints it to standard out
   pub fn as_ascii(&self) -> Result<(), ()> {
     let start_date: DateTime<Utc> = self.0.first().unwrap().0;
     let end_date: DateTime<Utc> = self.0.last().unwrap().0;
@@ -221,6 +223,7 @@ impl Burndown {
     Ok(())
   }
 
+  /// Generates an SVG graph of the Burndown struct and prints it to standard out
   pub fn as_svg(&self) -> Result<(), ()> {
     let mut context = Context::new();
 
@@ -291,31 +294,38 @@ impl Burndown {
     Ok(())
   }
 
+  /// Returns the date with the highest value
   fn max_date(&self) -> DateTime<Utc> {
     *self.0.iter().map(|(date, _, _)| date).max().unwrap()
   }
 
+  /// Returns the date with the lowest value
   fn min_date(&self) -> DateTime<Utc> {
     *self.0.iter().map(|(date, _, _)| date).min().unwrap()
   }
 
+  /// Returns the highest score from the complete category
   fn max_complete(&self) -> i32 {
     *self
       .0
       .iter()
-      .map(|(_, completed, _)| completed)
-      .max()
-      .unwrap()
-  }
-  fn max_incomplete(&self) -> i32 {
-    *self
-      .0
-      .iter()
-      .map(|(_, _, incompleted)| incompleted)
+      .map(|(_, _, completed)| completed)
       .max()
       .unwrap()
   }
 
+  /// Returns the highest score from the incomplete category
+  fn max_incomplete(&self) -> i32 {
+    *self
+      .0
+      .iter()
+      .map(|(_, incompleted, _)| incompleted)
+      .max()
+      .unwrap()
+  }
+
+  /// Extracts the incomplete and date scores and maps them into a Vec
+  /// of pointplots::Point struct.
   fn incomplete_as_points(&self) -> Vec<Point<Timestamp, f64>> {
     self
       .0
@@ -331,6 +341,8 @@ impl Burndown {
       .collect()
   }
 
+  /// Extracts the complete and date scores and maps them into a Vec
+  /// of pointplots::Point struct.
   fn complete_as_points(&self) -> Vec<Point<Timestamp, f64>> {
     self
       .0
@@ -344,5 +356,126 @@ impl Burndown {
         }
       })
       .collect()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::{commands::burndown::*, database::Entry, score::Deck};
+  fn gen_burndown() -> Burndown {
+    let entries = vec![
+      Entry {
+        board_id: "board-id-1".to_string(),
+        time_stamp: 1,
+        decks: vec![
+          Deck {
+            list_name: "listA".to_string(),
+            size: 5,
+            score: 20,
+            unscored: 0,
+            estimated: 20,
+          },
+          Deck {
+            list_name: "listB".to_string(),
+            size: 5,
+            score: 20,
+            unscored: 0,
+            estimated: 20,
+          },
+          Deck {
+            list_name: "Done".to_string(),
+            size: 10,
+            score: 40,
+            unscored: 0,
+            estimated: 40,
+          },
+        ],
+      },
+      Entry {
+        board_id: "board-id-1".to_string(),
+        time_stamp: 43200,
+        decks: vec![
+          Deck {
+            list_name: "listA".to_string(),
+            size: 5,
+            score: 20,
+            unscored: 0,
+            estimated: 20,
+          },
+          Deck {
+            list_name: "listB".to_string(),
+            size: 5,
+            score: 20,
+            unscored: 0,
+            estimated: 20,
+          },
+          Deck {
+            list_name: "Done".to_string(),
+            size: 10,
+            score: 40,
+            unscored: 0,
+            estimated: 40,
+          },
+        ],
+      },
+      Entry {
+        board_id: "board-id-1".to_string(),
+        time_stamp: 86401,
+        decks: vec![
+          Deck {
+            list_name: "listA".to_string(),
+            size: 5,
+            score: 20,
+            unscored: 0,
+            estimated: 20,
+          },
+          Deck {
+            list_name: "listB".to_string(),
+            size: 5,
+            score: 10,
+            unscored: 0,
+            estimated: 10,
+          },
+          Deck {
+            list_name: "Done".to_string(),
+            size: 10,
+            score: 50,
+            unscored: 0,
+            estimated: 50,
+          },
+        ],
+      },
+    ];
+
+    Burndown::calculate_burndown(&entries, &None)
+  }
+
+  #[test]
+  fn it_calculates_max_date() {
+    assert_eq!(gen_burndown().max_date().timestamp(), 86401)
+  }
+
+  #[test]
+  fn it_calculates_min_date() {
+    assert_eq!(gen_burndown().min_date().timestamp(), 1)
+  }
+
+  #[test]
+  fn it_returns_max_completed() {
+    assert_eq!(gen_burndown().max_complete(), 50)
+  }
+
+  #[test]
+  fn it_returns_max_incompleted() {
+    assert_eq!(gen_burndown().max_incomplete(), 40)
+  }
+
+  #[test]
+  fn it_returns_completed_as_points() {
+    assert_eq!(gen_burndown().complete_as_points(), vec![Point { x: Timestamp(1.0), y: 40.0 }, Point { x: Timestamp(43200.0), y: 40.0 }, Point { x: Timestamp(86401.0), y: 50.0 }])
+  }
+  #[test]
+  fn it_returns_incompleted_as_points() {
+    assert_eq!(gen_burndown().incomplete_as_points(), vec![Point { x: Timestamp(1.0), y: 40.0 }, Point { x: Timestamp(43200.0), y: 40.0 }, Point { x: Timestamp(86401.0), y: 30.0 }])
   }
 }
