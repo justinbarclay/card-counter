@@ -224,7 +224,7 @@ impl Burndown {
   }
 
   /// Generates an SVG graph of the Burndown struct and prints it to standard out
-  pub fn as_svg(&self) -> Result<(), ()> {
+  pub fn as_svg(&self) -> Result<String, ()> {
     let mut context = Context::new();
 
     //hardset the padding around the graph
@@ -290,8 +290,7 @@ impl Burndown {
 
     let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)
       .expect("Could not draw graph");
-    print!("{}", graph);
-    Ok(())
+    Ok(graph)
   }
 
   /// Returns the date with the highest value
@@ -472,10 +471,42 @@ mod tests {
 
   #[test]
   fn it_returns_completed_as_points() {
-    assert_eq!(gen_burndown().complete_as_points(), vec![Point { x: Timestamp(1.0), y: 40.0 }, Point { x: Timestamp(43200.0), y: 40.0 }, Point { x: Timestamp(86401.0), y: 50.0 }])
+    assert_eq!(
+      gen_burndown().complete_as_points(),
+      vec![
+        Point {
+          x: Timestamp(1.0),
+          y: 40.0
+        },
+        Point {
+          x: Timestamp(43200.0),
+          y: 40.0
+        },
+        Point {
+          x: Timestamp(86401.0),
+          y: 50.0
+        }
+      ]
+    )
   }
   #[test]
   fn it_returns_incompleted_as_points() {
-    assert_eq!(gen_burndown().incomplete_as_points(), vec![Point { x: Timestamp(1.0), y: 40.0 }, Point { x: Timestamp(43200.0), y: 40.0 }, Point { x: Timestamp(86401.0), y: 30.0 }])
+    assert_eq!(
+      gen_burndown().incomplete_as_points(),
+      vec![
+        Point {
+          x: Timestamp(1.0),
+          y: 40.0
+        },
+        Point {
+          x: Timestamp(43200.0),
+          y: 40.0
+        },
+        Point {
+          x: Timestamp(86401.0),
+          y: 30.0
+        }
+      ]
+    )
   }
 }
