@@ -1,12 +1,13 @@
 use crate::{
-  database::{config::Config, get_decks_by_date, Database, DatabaseType, DateRange, Entry},
+  commands::burndown::BurndownOptions,
+  database::{config::Config, get_decks_by_date, Database, DatabaseType},
   errors::Result,
   kanban::{self, init_kanban_board, Board, Card, Kanban},
   score::{print_decks, print_delta, Deck},
 };
 
-use burndown::Burndown;
-use chrono::NaiveDateTime;
+
+
 
 use std::collections::HashMap;
 
@@ -67,38 +68,28 @@ impl Command {
   /// Parses configuration passed in through matches
   pub async fn output_burndown(
     matches: &clap::ArgMatches<'_>,
-    client: &Box<dyn Database>,
+    client: Box<dyn Database>,
   ) -> Result<()> {
     let config = match Config::from_file()? {
       Some(config) => config,
       None => panic!("clean this up"),
     };
-    let start_str = matches.value_of("start").expect("Missing start argument");
-    let end_str = matches.value_of("end").expect("Missing end argument");
+
     let kanban = init_kanban_board(&config, matches);
 
-    let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%F %H:%M:%S")
-      .expect("Unable to parse date")
-      .timestamp();
+    let options = BurndownOptions::init_with_matches(kanban, client, matches).await?;
 
-    let end = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", end_str), "%F %H:%M:%S")
-      .expect("Unable to parse date")
-      .timestamp();
+    let burndown = options.into_burndown().await?;
 
-    let range = DateRange {
-      start,
-      end,
-    };
+    match matches.value_of("output") {
+      Some("ascii") => burndown.as_ascii().unwrap(),
+      Some("csv") => println!("{}", burndown.as_csv().join("\n")),
+      Some("svg") => println!("{}", burndown.as_svg().unwrap()),
+      Some(option) => println!("Output option {} not supported", option),
+      None => println!("{}", burndown.as_csv().join("\n")),
+    }
 
-    let board: Board = match matches.value_of("board_id") {
-      Some(id) => kanban.get_board(id).await?,
-      None => kanban.select_board().await?,
-    };
-
-    let output = matches.value_of("output");
-    let filter = matches.value_of("filter");
-
-    generate_burndown(range, board, client, output, filter).await
+    Ok(())
   }
 }
 

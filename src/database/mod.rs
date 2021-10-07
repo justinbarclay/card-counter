@@ -134,6 +134,20 @@ pub struct DateRange {
   pub end: i64,
 }
 
+impl DateRange {
+  pub fn from_strs(start: &str, end: &str) -> Self {
+    let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start), "%F %H:%M:%S")
+      .expect("Unable to parse date")
+      .timestamp();
+
+    let end = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", end), "%F %H:%M:%S")
+      .expect("Unable to parse date")
+      .timestamp();
+
+    DateRange { start, end }
+  }
+}
+
 impl Default for DateRange {
   fn default() -> Self {
     let time = SystemTime::now()
