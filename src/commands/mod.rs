@@ -14,6 +14,7 @@ pub mod burndown;
 
 pub struct Command;
 
+/// Acts on commands issued by the user, often parses clap arguments to get the job done.
 impl Command {
   pub fn check_for_database(database: Option<&str>) -> Result<DatabaseType> {
     match Config::from_file()? {
@@ -63,38 +64,41 @@ impl Command {
     Ok((board, decks))
   }
 
+  /// Parses configuration passed in through matches
   pub async fn output_burndown(
     matches: &clap::ArgMatches<'_>,
     client: &Box<dyn Database>,
   ) -> Result<()> {
+    let config = match Config::from_file()? {
+      Some(config) => config,
+      None => panic!("clean this up"),
+    };
     let start_str = matches.value_of("start").expect("Missing start argument");
     let end_str = matches.value_of("end").expect("Missing end argument");
-
-    let trello = kanban::trello::TrelloClient::init(&Config::from_file_or_default()?);
-    let board: Board = match matches.value_of("board_id") {
-      Some(id) => trello.get_board(id).await?,
-      None => trello.select_board().await?,
-    };
+    let kanban = init_kanban_board(&config, matches);
 
     let start = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", start_str), "%F %H:%M:%S")
-      .expect("Unable to parse date");
+      .expect("Unable to parse date")
+      .timestamp();
+
     let end = NaiveDateTime::parse_from_str(&format!("{} 0:0:0", end_str), "%F %H:%M:%S")
-      .expect("Unable to parse date");
+      .expect("Unable to parse date")
+      .timestamp();
+
     let range = DateRange {
-      start: start.timestamp(),
-      end: end.timestamp(),
+      start,
+      end,
     };
+
+    let board: Board = match matches.value_of("board_id") {
+      Some(id) => kanban.get_board(id).await?,
+      None => kanban.select_board().await?,
+    };
+
+    let output = matches.value_of("output");
     let filter = matches.value_of("filter");
-    let entries: Vec<Entry> = client.query_entries(board.id, Some(range)).await?.unwrap();
-    let burndown = Burndown::calculate_burndown(&entries, &filter);
-    match matches.value_of("output") {
-      Some("ascii") => burndown.as_ascii().unwrap(),
-      Some("csv") => println!("{}", burndown.as_csv().join("\n")),
-      Some("svg") => burndown.as_svg().unwrap(),
-      Some(option) => println!("Output option {} not supported", option),
-      None => println!("{}", burndown.as_csv().join("\n")),
-    }
-    Ok(())
+
+    generate_burndown(range, board, client, output, filter).await
   }
 }
 
@@ -113,4 +117,24 @@ async fn kanban_compile_decks(
   let decks = kanban::build_decks(lists, map_cards);
 
   Ok((board, decks))
+}
+
+async fn generate_burndown(
+  range: DateRange,
+  board: Board,
+  client: &Box<dyn Database>,
+  output: Option<&str>,
+  filter: Option<&str>,
+) -> Result<()> {
+  let entries: Vec<Entry> = client.query_entries(board.id, Some(range)).await?.unwrap();
+  let burndown = Burndown::calculate_burndown(&entries, &filter);
+
+  match output {
+    Some("ascii") => burndown.as_ascii().unwrap(),
+    Some("csv") => println!("{}", burndown.as_csv().join("\n")),
+    Some("svg") => println!("{}", burndown.as_svg().unwrap()),
+    Some(option) => println!("Output option {} not supported", option),
+    None => println!("{}", burndown.as_csv().join("\n")),
+  }
+  Ok(())
 }
