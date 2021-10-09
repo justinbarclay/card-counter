@@ -82,6 +82,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
+name = "aws_lambda_events"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7bfa650eb33bcc1d4a2f513dd142015d3804ab85217a643b846d1f0fe104a1e"
+dependencies = [
+ "base64",
+ "bytes 1.0.1",
+ "chrono",
+ "http",
+ "http-serde",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "azure_core"
 version = "0.1.0"
 source = "git+https://github.com/justinbarclay/azure-sdk-for-rust?branch=jb/fix-header-const#67f13f1207d7975918cd88cb2f681c6958918c09"
@@ -226,12 +242,16 @@ name = "bytes"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "card-counter"
 version = "1.0.0-alpha-4"
 dependencies = [
  "async-trait",
+ "aws_lambda_events",
  "azure_core",
  "azure_cosmos",
  "chrono",
@@ -239,19 +259,23 @@ dependencies = [
  "dialoguer",
  "dirs 2.0.2",
  "eyre",
+ "http",
  "hyper 0.14.10",
  "hyper-tls 0.4.3",
  "lambda_runtime",
  "log",
+ "openssl",
  "pointplots",
  "prettytable-rs",
  "regex",
  "reqwest",
  "rusoto_core",
  "rusoto_dynamodb",
+ "rusoto_s3",
  "serde",
  "serde_dynamodb",
  "serde_json",
+ "serde_urlencoded",
  "serde_yaml",
  "simple_logger",
  "tera",
@@ -876,9 +900,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "527e8c9ac747e28542699a951517aa9a6945af506cd1f2e1b53a576c17b6cc11"
+checksum = "1323096b05d41827dadeaee54c9981958c0f94e670bc94ed80037d1a7b8b186b"
 dependencies = [
  "bytes 1.0.1",
  "fnv",
@@ -904,6 +928,16 @@ dependencies = [
  "bytes 1.0.1",
  "http",
  "pin-project-lite 0.2.7",
+]
+
+[[package]]
+name = "http-serde"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25698ac7002625796d5a7df8f0602400571da944c2edc1d5c268a6947dd4f692"
+dependencies = [
+ "http",
+ "serde",
 ]
 
 [[package]]
@@ -1376,14 +1410,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28988d872ab76095a6e6ac88d99b54fd267702734fd7ffe610ca27f533ddb95a"
 
 [[package]]
-name = "openssl-sys"
-version = "0.9.65"
+name = "openssl-src"
+version = "111.16.0+1.1.1l"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a7907e3bfa08bb85105209cdfcb6c63d109f8f6c1ed6ca318fff5c1853fbc1d"
+checksum = "7ab2173f69416cf3ec12debb5823d244127d23a9b127d5a5189aa97c5fa2859f"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "openssl-sys"
+version = "0.9.67"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69df2d8dfc6ce3aaf44b40dec6f487d5a886516cf6879c49e98e0710f310a058"
 dependencies = [
  "autocfg",
  "cc",
  "libc",
+ "openssl-src",
  "pkg-config",
  "vcpkg",
 ]
@@ -1792,6 +1836,19 @@ dependencies = [
  "rusoto_core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "rusoto_s3"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "abc3f56f14ccf91f880b9a9c2d0556d8523e8c155041c54db155b384a1dd1119"
+dependencies = [
+ "async-trait",
+ "bytes 1.0.1",
+ "futures",
+ "rusoto_core",
+ "xml-rs",
 ]
 
 [[package]]

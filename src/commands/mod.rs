@@ -6,9 +6,6 @@ use crate::{
   score::{print_decks, print_delta, Deck},
 };
 
-
-
-
 use std::collections::HashMap;
 
 pub mod burndown;
@@ -108,24 +105,4 @@ async fn kanban_compile_decks(
   let decks = kanban::build_decks(lists, map_cards);
 
   Ok((board, decks))
-}
-
-async fn generate_burndown(
-  range: DateRange,
-  board: Board,
-  client: &Box<dyn Database>,
-  output: Option<&str>,
-  filter: Option<&str>,
-) -> Result<()> {
-  let entries: Vec<Entry> = client.query_entries(board.id, Some(range)).await?.unwrap();
-  let burndown = Burndown::calculate_burndown(&entries, &filter);
-
-  match output {
-    Some("ascii") => burndown.as_ascii().unwrap(),
-    Some("csv") => println!("{}", burndown.as_csv().join("\n")),
-    Some("svg") => println!("{}", burndown.as_svg().unwrap()),
-    Some(option) => println!("Output option {} not supported", option),
-    None => println!("{}", burndown.as_csv().join("\n")),
-  }
-  Ok(())
 }

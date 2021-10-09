@@ -1,0 +1,15 @@
+{
+  "token": "hEtGX3uGXXwWerdNOjYAn5c3",
+  "team_id": "T87JQN0C9",
+  "team_domain": "newplagiarist",
+  "channel_id": "CB46YE090",
+  "channel_name": "panic",
+  "user_id": "U896PNHRD",
+  "user_name": "justincbarclay",
+  "command": "%2Fcard-counter",
+  "text": "burndown+from+2021-01-01+to+2021-10-31+for+3em95wSl",
+  "api_app_id": "A02HAH525NZ",
+  "is_enterprise_install": false,
+  "response_url": "https%3A%2F%2Fhooks.slack.com%2Fcommands%2FT87JQN0C9%2F2615499011376%2FKWh7viCc3xMZlzeCsMVNLWNO",
+  "trigger_id": "2591853907955.279636748417.916fc7adaa7d8fe8d7cf443096ce37b6"
+}

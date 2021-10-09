@@ -36,7 +36,7 @@
   {% endfor %}
 
   {% set x_label_length = x_labels | length - 1%}
-  {% for label in x_labels | reverse%}
+  {% for label in x_labels %}
   {% set offset_x = padding + loop.index0/x_label_length * width %}
   <!-- Bottom ticks -->
   <path stroke="#74838f" stroke-width="2.0" d="M {{offset_x}} {{height + padding}} L {{offset_x}} {{height + padding + 10}}" />

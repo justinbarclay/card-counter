@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "card-counter"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-aw3n8knfejul"
+s3_prefix = "card-counter"
+region = "ca-central-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []

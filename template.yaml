@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+
+Resources:
+  CardCounter:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: hello.handler
+      Runtime: provided
+      CodeUri: ./rust.zip
+      Description: ''
+      MemorySize: 128
+      Timeout: 5
+      Environment:
+        Variables:
+          TRELLO_API_KEY: <your-key>
+          TRELLO_API_TOKEN: <your-token>
+          BUCKET_NAME: card-counter.slack
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /card-counter
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: card-counter
+        - S3CrudPolicy:
+            BucketName: card-counter.slack
+
+Outputs:
+
+  CardCounter:
+    Description: "API Gateway endpoint URL for Prod stage for CardCounter"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/card-counter"
+
+  CardCounterArn:
+    Description: "CardCounter Lambda Function ARN"
+    Value: !GetAtt CardCounter.Arn
+
+  CardCounterIamRole:
+    Description: "Implicit IAM Role created for CardCounter function"
+    Value: !GetAtt CardCounterRole.Arn
+            

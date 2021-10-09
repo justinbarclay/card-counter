@@ -1,4 +1,8 @@
-use crate::{database::{Database, DateRange, Entry}, errors::*, kanban::{Board, Kanban}};
+use crate::{
+  database::{Database, DateRange, Entry},
+  errors::*,
+  kanban::{Board, Kanban},
+};
 use core::fmt;
 
 use serde::{Serialize, Serializer};
@@ -8,6 +12,9 @@ use pointplots::{Chart, PixelColor, Plot, Point, Shape};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
 use tera::{Context, Tera};
+
+#[macro_use]
+use log::{error, info};
 
 #[derive(Debug, Clone, PartialEq)]
 struct Timestamp(f64);
@@ -51,11 +58,12 @@ impl Serialize for Timestamp {
     serializer.serialize_str(&format!("{}", &self))
   }
 }
+
 pub struct BurndownOptions {
-  pub board: Board,
+  pub board_id: String,
   pub client: Box<dyn Database>,
   pub range: DateRange,
-  pub filter: Option<String>
+  pub filter: Option<String>,
 }
 
 impl BurndownOptions {
@@ -73,12 +81,12 @@ impl BurndownOptions {
       Some(id) => kanban.get_board(id).await?,
       None => kanban.select_board().await?,
     };
-
+    let board_id = board.id;
     let filter: Option<String> = matches.value_of("filter").map(|filter| filter.into());
 
     Ok(Self {
       client,
-      board,
+      board_id,
       filter,
       range,
     })
@@ -87,8 +95,10 @@ impl BurndownOptions {
   pub async fn into_burndown(self) -> Result<Burndown> {
     let entries = self
       .client
-      .query_entries(self.board.id, Some(self.range))
-      .await?.unwrap();
+      .query_entries(self.board_id, Some(self.range))
+      .await?
+      .unwrap();
+    info!("{:?}", entries);
     Ok(Burndown::calculate_burndown(&entries, self.filter))
   }
 }
@@ -116,7 +126,7 @@ impl Entry {
       .iter()
       .fold((0, 0), |(incomplete, complete), deck| -> (i32, i32) {
         if filter.is_some() && deck.list_name.contains(filter.as_ref().unwrap()) {
-            (incomplete, complete)
+          (incomplete, complete)
         } else if deck.list_name.contains("Done") {
           (incomplete, complete + deck.score)
         } else {
@@ -266,7 +276,7 @@ impl Burndown {
   }
 
   /// Generates an SVG graph of the Burndown struct and prints it to standard out
-  pub fn as_svg(&self) -> Result<String, ()> {
+  pub fn as_svg(&self) -> Result<String> {
     let mut context = Context::new();
 
     //hardset the padding around the graph
@@ -330,8 +340,7 @@ impl Burndown {
       ],
     );
 
-    let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)
-      .expect("Could not draw graph");
+    let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)?;
     Ok(graph)
   }
 
