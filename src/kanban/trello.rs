@@ -121,7 +121,7 @@ impl Kanban for TrelloClient {
   /// Retrieves the name of the board given the id
   async fn get_board(&self, board_id: &str) -> Result<Board> {
     let route = format!(
-      "https://api.trello.com/1/boards/{}?key={}&token={}",
+      "https://trello.com/1/Boards/{}?key={}&token={}",
       board_id, self.auth.key, self.auth.token
     );
 
