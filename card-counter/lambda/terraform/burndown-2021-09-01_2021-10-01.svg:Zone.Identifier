@@ -1,0 +1,4 @@
+[ZoneTransfer]
+ZoneId=3
+ReferrerUrl=https://s3.console.aws.amazon.com/s3/object/card-counter.slack?region=ca-central-1&prefix=burndown-2021-09-01_2021-10-01.svg
+HostUrl=https://s3.ca-central-1.amazonaws.com/card-counter.slack/burndown-2021-09-01_2021-10-01.svg

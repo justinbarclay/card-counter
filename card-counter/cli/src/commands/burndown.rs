@@ -13,9 +13,6 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 
 use tera::{Context, Tera};
 
-#[macro_use]
-use log::{error, info};
-
 #[derive(Debug, Clone, PartialEq)]
 struct Timestamp(f64);
 
@@ -98,7 +95,6 @@ impl BurndownOptions {
       .query_entries(self.board_id, Some(self.range))
       .await?
       .unwrap();
-    info!("{:?}", entries);
     Ok(Burndown::calculate_burndown(&entries, self.filter))
   }
 }
