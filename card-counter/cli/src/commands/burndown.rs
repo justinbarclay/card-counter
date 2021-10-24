@@ -1,5 +1,10 @@
-use crate::database::Entry;
+use crate::{
+  database::{Database, DateRange, Entry},
+  errors::*,
+  kanban::{Board, Kanban},
+};
 use core::fmt;
+
 use serde::{Serialize, Serializer};
 
 use pointplots::{Chart, PixelColor, Plot, Point, Shape};
@@ -51,6 +56,49 @@ impl Serialize for Timestamp {
   }
 }
 
+pub struct BurndownOptions {
+  pub board_id: String,
+  pub client: Box<dyn Database>,
+  pub range: DateRange,
+  pub filter: Option<String>,
+}
+
+impl BurndownOptions {
+  pub async fn init_with_matches(
+    kanban: Box<dyn Kanban>,
+    client: Box<dyn Database>,
+    matches: &clap::ArgMatches<'_>,
+  ) -> Result<BurndownOptions> {
+    let start = matches.value_of("start").expect("Missing start argument");
+    let end = matches.value_of("end").expect("Missing end argument");
+
+    let range = DateRange::from_strs(start, end);
+
+    let board: Board = match matches.value_of("board_id") {
+      Some(id) => kanban.get_board(id).await?,
+      None => kanban.select_board().await?,
+    };
+    let board_id = board.id;
+    let filter: Option<String> = matches.value_of("filter").map(|filter| filter.into());
+
+    Ok(Self {
+      client,
+      board_id,
+      filter,
+      range,
+    })
+  }
+
+  pub async fn into_burndown(self) -> Result<Burndown> {
+    let entries = self
+      .client
+      .query_entries(self.board_id, Some(self.range))
+      .await?
+      .unwrap();
+    Ok(Burndown::calculate_burndown(&entries, self.filter))
+  }
+}
+
 impl Entry {
   /// Calculates a Deck's total score based on the score of the list done vs the other lists.
   /// Ex:
@@ -68,12 +116,12 @@ impl Entry {
   ///
   /// assert_eq!((40, 40), entry.calculate_score(&None));
   /// ```
-  pub fn calculate_score(&self, filter: &Option<&str>) -> (i32, i32) {
+  pub fn calculate_score(&self, filter: &Option<String>) -> (i32, i32) {
     self
       .decks
       .iter()
       .fold((0, 0), |(incomplete, complete), deck| -> (i32, i32) {
-        if filter.is_some() && deck.list_name.contains(filter.unwrap()) {
+        if filter.is_some() && deck.list_name.contains(filter.as_ref().unwrap()) {
           (incomplete, complete)
         } else if deck.list_name.contains("Done") {
           (incomplete, complete + deck.score)
@@ -116,9 +164,9 @@ impl Burndown {
   /// let entries = vec![entry, entry2];
   /// let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1, 0), Utc);
   /// let timestamp2 = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(86401, 0), Utc);
-  /// assert_eq!(vec![(timestamp, 40, 40), (timestamp2, 30, 50)], Burndown::calculate_burndown(&entries, &None).0);
+  /// assert_eq!(vec![(timestamp, 40, 40), (timestamp2, 30, 50)], Burndown::calculate_burndown(&entries, None).0);
   /// ```
-  pub fn calculate_burndown(entries: &[Entry], filter: &Option<&str>) -> Self {
+  pub fn calculate_burndown(entries: &[Entry], filter: Option<String>) -> Self {
     let mut entries = entries.to_vec();
 
     // In some cases, there are going to be multiple entries for a
@@ -128,7 +176,7 @@ impl Burndown {
     let mut burndown: Vec<(DateTime<Utc>, i32, i32)> = Vec::new();
     entries.into_iter().for_each(|entry| {
       let time = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(entry.time_stamp, 0), Utc);
-      let (incomplete, complete) = entry.calculate_score(filter);
+      let (incomplete, complete) = entry.calculate_score(&filter);
 
       // Remove duplicate entry
       if let Some(entry) = burndown.last() {
@@ -169,7 +217,7 @@ impl Burndown {
   /// let entries = vec![entry, entry2];
   /// let timestamp = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(1, 0), Utc);
   /// let timestamp2 = DateTime::<Utc>::from_utc(NaiveDateTime::from_timestamp(86401, 0), Utc);
-  /// assert_eq!(vec!["Date,Incomplete,Complete", "01-01-1970,40,40", "02-01-1970,30,50"], Burndown::calculate_burndown(&entries, &None).as_csv());
+  /// assert_eq!(vec!["Date,Incomplete,Complete", "01-01-1970,40,40", "02-01-1970,30,50"], Burndown::calculate_burndown(&entries, None).as_csv());
   ///```
   pub fn as_csv(&self) -> Vec<String> {
     let mut output = vec!["Date,Incomplete,Complete".to_string()];
@@ -224,7 +272,7 @@ impl Burndown {
   }
 
   /// Generates an SVG graph of the Burndown struct and prints it to standard out
-  pub fn as_svg(&self) -> Result<String, ()> {
+  pub fn as_svg(&self) -> Result<String> {
     let mut context = Context::new();
 
     //hardset the padding around the graph
@@ -288,8 +336,7 @@ impl Burndown {
       ],
     );
 
-    let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)
-      .expect("Could not draw graph");
+    let graph = Tera::one_off(include_str!("../template/burndown.svg"), &context, true)?;
     Ok(graph)
   }
 
@@ -446,7 +493,7 @@ mod tests {
       },
     ];
 
-    Burndown::calculate_burndown(&entries, &None)
+    Burndown::calculate_burndown(&entries, None)
   }
 
   #[test]

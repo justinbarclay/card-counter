@@ -146,7 +146,7 @@ async fn run() -> Result<()> {
   };
 
   if let Some(matches) = matches.subcommand_matches("burndown") {
-    Command::output_burndown(matches, &database).await?;
+    Command::output_burndown(matches, database).await?;
   } else {
     let (board, decks) =
       Command::show_score(&Config::from_file_or_default()?, &matches, &database).await?;

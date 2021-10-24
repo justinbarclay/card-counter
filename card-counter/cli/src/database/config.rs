@@ -265,6 +265,12 @@ fn database_preference() -> Result<DatabaseType> {
 }
 
 impl Config {
+  pub fn from_env() -> Result<Config> {
+    Ok(Config {
+      kanban: KanbanBoard::Trello(trello_auth_from_env().unwrap()),
+      ..Config::default()
+    })
+  }
   pub fn from_file() -> Result<Option<Config>> {
     let config = match config_file() {
       Ok(file) => file,

@@ -1,0 +1,68 @@
+{
+  "resource": "/card-counter",
+  "path": "/card-counter",
+  "httpMethod": "POST",
+
+  "headers": {
+    "accept": "application/json,*/*",
+    "accept-encoding": "gzip,deflate",
+    "cloudfront-forwarded-proto": "https",
+    "cloudfront-is-desktop-viewer": "true",
+    "cloudfront-is-mobile-viewer": "false",
+    "cloudfront-is-smarttv-viewer": "false",
+    "cloudfront-is-tablet-viewer": "false",
+    "cloudfront-viewer-country": "US",
+    "content-type": "application/x-www-form-urlencoded",
+    "host": "3m9hkqf9m8.execute-api.ca-central-1.amazonaws.com",
+    "user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+    "via": "1.1 65a9dfba94b72916e09740a3c4fd79ba.cloudfront.net (CloudFront)",
+    "x-amz-cf-id": "eCKQo-REVsDVWVcE-GlxFW2xZQeF4RSmngVTLvNr8NpTNOQ424_6bw==",
+    "x-amzn-trace-id": "Root=1-617393c4-7db0b6b3653b34471af0ed35",
+    "x-forwarded-for": "3.83.254.60, 130.176.133.137",
+    "x-forwarded-port": "443",
+    "x-forwarded-proto": "https",
+    "x-slack-request-timestamp": "1634964420",
+    "x-slack-signature": "v0=8967f180ea4df27fb5e51fe143aaa67b4076693a97d2a99a9154b96f7db0a3ae"
+  },
+  "multiValueHeaders": {
+    "accept": "application/json,*/*",
+    "accept-encoding": "gzip,deflate",
+    "cloudfront-forwarded-proto": "https",
+    "cloudfront-is-desktop-viewer": "true",
+    "cloudfront-is-mobile-viewer": "false",
+    "cloudfront-is-smarttv-viewer": "false",
+    "cloudfront-is-tablet-viewer": "false",
+    "cloudfront-viewer-country": "US",
+    "content-type": "application/x-www-form-urlencoded",
+    "host": "3m9hkqf9m8.execute-api.ca-central-1.amazonaws.com",
+    "user-agent": "Slackbot 1.0 (+https://api.slack.com/robots)",
+    "via": "1.1 65a9dfba94b72916e09740a3c4fd79ba.cloudfront.net (CloudFront)",
+    "x-amz-cf-id": "eCKQo-REVsDVWVcE-GlxFW2xZQeF4RSmngVTLvNr8NpTNOQ424_6bw==",
+    "x-amzn-trace-id": "Root=1-617393c4-7db0b6b3653b34471af0ed35",
+    "x-forwarded-for": "3.83.254.60, 130.176.133.137",
+    "x-forwarded-port": "443",
+    "x-forwarded-proto": "https",
+    "x-slack-request-timestamp": "1634964420",
+    "x-slack-signature": "v0=8967f180ea4df27fb5e51fe143aaa67b4076693a97d2a99a9154b96f7db0a3ae"
+  },
+  "requestContext": {
+    "account_id": "351914161648",
+    "resource_id": "31bfb3",
+    "stage": "Prod",
+    "domain_name": "3m9hkqf9m8.execute-api.ca-central-1.amazonaws.com",
+    "domain_prefix": "3m9hkqf9m8",
+    "request_id": "37380e05-4e79-41fa-b0c1-052249f3f564",
+    "protocol": "HTTP/1.1",
+    "identity": {
+      "source_ip": "3.83.254.60",
+      "user_agent": "Slackbot 1.0 (+https://api.slack.com/robots)"
+    },
+    "resourcePath": "/card-counter",
+    "httpMethod": "POST",
+    "requestTime": "23/Oct/2021:04:47:00 +0000",
+    "requestTimeEpoch": 1634964420147,
+    "apiid": "3m9hkqf9m8"
+  },
+  "body": "token=hEtGX3uGXXwWerdNOjYAn5c3&team_id=T87JQN0C9&team_domain=newplagiarist&channel_id=CB46YE090&channel_name=panic&user_id=U896PNHRD&user_name=justincbarclay&command=%2Fcard-counter&text=burndown+from+2021-09-01+to+2021-10-01+for+3em95wSl&api_app_id=A02HAH525NZ&is_enterprise_install=false&response_url=https%3A%2F%2Fhooks.slack.com%2Fcommands%2FT87JQN0C9%2F2632899718070%2FbgKssNxrBF28LOyjerSI1B5h&trigger_id=2652232158417.279636748417.77ebe5692463c49fd6aa06c1b777c56b",
+  "isBase64Encoded": false
+}

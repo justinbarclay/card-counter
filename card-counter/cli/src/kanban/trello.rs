@@ -44,8 +44,8 @@ pub struct TrelloCard {
 }
 
 pub struct TrelloClient {
-  client: reqwest::Client,
-  auth: TrelloAuth,
+  pub client: reqwest::Client,
+  pub auth: TrelloAuth,
 }
 
 impl From<TrelloList> for List {
