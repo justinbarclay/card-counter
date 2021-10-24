@@ -6,7 +6,7 @@ Resources:
   CardCounter:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: hello.handler
+      Handler: card-counter.handler
       Runtime: provided
       CodeUri: ./rust.zip
       Description: ''
@@ -16,7 +16,7 @@ Resources:
         Variables:
           TRELLO_API_KEY: <your-key>
           TRELLO_API_TOKEN: <your-token>
-          BUCKET_NAME: card-counter.slack
+          BUCKET_NAME: <your-bucket-here>
       Events:
         Api:
           Type: Api
@@ -27,7 +27,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: card-counter
         - S3CrudPolicy:
-            BucketName: card-counter.slack
+            BucketName: <your-bucket-here>
 
 Outputs:
 

@@ -10,4 +10,4 @@ zip -j card-counter/lambda/rust.zip ./target/x86_64-unknown-linux-musl/release/b
 
 cd $cur_dir
 sam build
-sam local invoke --profile default -e query.json
+sam deploy

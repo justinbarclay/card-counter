@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "card-counter" {
-  bucket = "card-counter.slack"
+  bucket = <bucket-name>
   acl    = "public-read"
   policy = file("policy.json")
 
