@@ -4,7 +4,7 @@ A CLI for quickly summarizing story points in Trello lists.
 
 [[./images/card-counter.gif]]
 #+BEGIN_EXAMPLE
-card-counter 1.0.0-alpha-5
+card-counter 1.0.0
 Justin Barclay <justincbarclay@gmail.com>
 A CLI for quickly summarizing story points in Trello lists
 
@@ -303,7 +303,10 @@ Don't trust the binaries I provided? I have an easy solution for you. Build it f
 #+BEGIN_SRC bash
 git clone https://github.com/justinbarclay/card-counter.git
 cd card-counter
-cargo install --path .
+cargo install --path ./card-counter/cli
 #+END_SRC
 
 /Fin/, finally.
+
+*** But wait there's more (λ)
+As a bonus treat for those of you dealing with corporate overlords and Slack, if you're so inclined you could create a Slack Slash command to send. I've created an outline, or a sketch, of how your could this [[./card-counter/lambda/readme.org][here]].

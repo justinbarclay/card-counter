@@ -1,7 +1,7 @@
 * Burndown lambda
 Maybe you want to allow anyone to generate burndown. And maybe by anyone you mean your team members in slack. I've hacked together an example of how to do just such a thing.
 
-Once you've set up the s3 bucket (outlined in the terraform folder), and once you've deployed the lambda (outlined in ~template.yaml~), and once you've made a new SlackBot and configured it to hit the ApiGateway endpoint for the lambda. You can have you teammates generate a Burndown chart simply by invoking the card-counter command[fn:1]:
+Once you've set up the s3 bucket (outlined in the terraform folder), and once you've deployed the lambda (outlined in ~template.yaml~), and once you've made a new SlackBot and configured it to hit the ApiGateway endpoint for the lambda. You can have you teammates generate a Burndown chart simply by invoking the card-counter command[fn:1][fn:2]:
 #+begin_example
 /card-counter from YYYY-MM-DD to YYYY-MM-DD for <board-id>
 #+end_example
@@ -11,10 +11,10 @@ Once a command is sent to the lambda it will:
 2. Validate the board id and query DynamoDb
 3. Generate an SVG chart and upload it to the S3 bucket
 4. Send back a link to the S3 bucket with a query param for the date range of the chart
-5. When the user navigates to the html it will use this query param to try to load the image from the s3 bucket
+5. When the user navigates to the html it will use this query param to try to load the image from the s3 bucket>
 
 [fn:1]Of course, you don't have to call your command card-counter, you could probably call it burndown. But I am a narcissist, so I named it after my creation.
-
+[fn:2]This method generates an SVG image and Slack hates displaying SVG, so we have to upload it to an image hosting service. (The S3 Bucket)
 
 ** Setup
 #+begin_quote
