@@ -172,4 +172,6 @@ pub trait Database {
     board_name: String,
     date_range: Option<DateRange>,
   ) -> Result<Option<Entries>>;
+
+  fn what_type(&self) -> String;
 }

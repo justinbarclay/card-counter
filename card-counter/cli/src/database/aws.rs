@@ -233,6 +233,10 @@ impl Database for Aws {
     };
     Ok(Some(entries))
   }
+
+  fn what_type(&self) -> String {
+    "AWS".to_string()
+  }
 }
 
 impl Aws {

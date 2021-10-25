@@ -15,24 +15,22 @@ pub struct Command;
 /// Acts on commands issued by the user, often parses clap arguments to get the job done.
 impl Command {
   pub fn check_for_database(database: Option<&str>) -> Result<DatabaseType> {
-    match Config::from_file()? {
-      Some(config) => Ok(config.database),
-      None => match database {
-        Some("aws") => Ok(DatabaseType::Aws),
-        Some("local") => Ok(DatabaseType::Local),
-        Some("azure") => Ok(DatabaseType::Azure),
-        Some(some) => {
-          println!(
-            "Unable to find database for {}. Using local database instead",
-            some
-          );
-          Ok(DatabaseType::Local)
-        }
-        None => {
-          println!("No database chosen, defaulting to local.");
-          Ok(DatabaseType::Local)
-        }
-      },
+    match (database, Config::from_file()?) {
+      (Some("aws"), _) => Ok(DatabaseType::Aws),
+      (Some("local"), _) => Ok(DatabaseType::Local),
+      (Some("azure"), _) => Ok(DatabaseType::Azure),
+      (Some(some), _) => {
+        println!(
+          "Unable to find database for {}. Using local database instead",
+          some
+        );
+        Ok(DatabaseType::Local)
+      }
+      (None, Some(config)) => Ok(config.database),
+      (None, None) =>{
+        println!("No database chosen, defaulting to local.");
+        Ok(DatabaseType::Local)
+      }
     }
   }
 

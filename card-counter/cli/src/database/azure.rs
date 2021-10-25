@@ -155,6 +155,10 @@ impl Database for Azure {
 
     Ok(Some(results.iter().map(Entry::from).collect()))
   }
+
+  fn what_type(&self) -> String {
+    "Azure".into()
+  }
 }
 impl Azure {
   // I _hate_ this method. But ErrorChain is not working so it's hard

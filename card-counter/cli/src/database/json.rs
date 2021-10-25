@@ -177,6 +177,10 @@ impl Database for JSON {
       Ok(Some(entries))
     }
   }
+
+  fn what_type(&self) -> String {
+    "JSON".into()
+  }
 }
 
 impl JSON {
