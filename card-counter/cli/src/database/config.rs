@@ -1,12 +1,18 @@
 use dialoguer::{Input, Select};
 use serde::{Deserialize, Serialize};
+
 use std::env;
 use std::fmt;
+
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
+use std::str::FromStr;
+
 
 use super::DatabaseType;
 use crate::database::json::config_file;
+
+
 use crate::{errors::*, kanban::trello::TrelloAuth};
 
 // The possible values that trello accepts for token expiration times
@@ -66,6 +72,30 @@ impl Default for KanbanBoard {
   }
 }
 
+impl FromStr for KanbanBoard{
+    type Err = KanbanParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+      match s.to_lowercase().as_str() {
+        "trello" => Ok(KanbanBoard::Trello(TrelloAuth::default())),
+        "jira" => Ok(KanbanBoard::Jira(JiraAuth::default())),
+        no_match => Err(KanbanParseError(no_match.to_string()))
+      }
+    }
+}
+
+impl KanbanBoard{
+  fn from_env(kanban: &str) -> Option<KanbanBoard> {
+    match KanbanBoard::from_str(kanban){
+      Ok(KanbanBoard::Trello(_)) => {
+        trello_auth_from_env().map(KanbanBoard::Trello)}
+      ,
+      Ok(KanbanBoard::Jira(_)) => {
+        jira_auth_from_env().map(KanbanBoard::Jira)},
+      Err(_) => None
+    }
+  }
+}
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct AWS {
   secret_access_key: String,
@@ -265,12 +295,6 @@ fn database_preference() -> Result<DatabaseType> {
 }
 
 impl Config {
-  pub fn from_env() -> Result<Config> {
-    Ok(Config {
-      kanban: KanbanBoard::Trello(trello_auth_from_env().unwrap()),
-      ..Config::default()
-    })
-  }
   pub fn from_file() -> Result<Option<Config>> {
     let config = match config_file() {
       Ok(file) => file,
@@ -297,15 +321,17 @@ impl Config {
 
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
   pub fn check_for_auth() -> Result<Option<TrelloAuth>> {
-    match Config::from_file()? {
-      Some(config) => Ok(config.trello_auth()),
-      None => Ok(trello_auth_from_env()),
+    match (trello_auth_from_env(), Config::from_file()?) {
+      (Some(env), _) => Ok(Some(env)),
+      (None, Some(config)) => Ok(config.trello_auth()),
+      (None, None) => Ok(Some(TrelloAuth::default()))
     }
   }
 
   pub fn user_update_prompts(mut self) -> Result<Config> {
     self.kanban = kanban_details(self.kanban)?;
     self.database = database_preference()?;
+
     if self.database == DatabaseType::Azure {
       println!("What are your Cosmos database and container names?");
       self.database_configuration = database_details(self.database_configuration);
@@ -334,10 +360,24 @@ impl Config {
     Ok(())
   }
 
+
   pub fn from_file_or_default() -> Result<Config> {
     match Config::from_file()? {
       Some(config) => Ok(config),
       None => Ok(Config::default()),
+    }
+  }
+
+
+  pub fn init(kanban: Option<&str>) -> Result<Config> {
+    let config = Config::from_file_or_default()?;
+    if let Some(auth) = KanbanBoard::from_env(kanban.unwrap_or(&config.kanban.to_string())) {
+      Ok(Config{
+       kanban: auth,
+        ..config
+      })
+    } else {
+      Ok(config)
     }
   }
 
@@ -347,7 +387,7 @@ impl Config {
     }
     match self.kanban {
       KanbanBoard::Jira(_) => {
-        eprintln!("Unable to get auth details for Jira");
+        eprintln!("Unable to get auth details for Trello");
         None
       }
       KanbanBoard::Trello(trello) => Some(trello),

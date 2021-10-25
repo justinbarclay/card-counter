@@ -132,7 +132,7 @@ async fn run() -> Result<()> {
 
   // Setting up config requires little access
   if matches.subcommand_matches("config").is_some() {
-    Config::from_file_or_default()?.update_file()?;
+    Config::init(None)?.update_file()?;
     std::process::exit(0)
   }
 
@@ -140,8 +140,8 @@ async fn run() -> Result<()> {
   // the command can worry about if and when to open or verify database connection
   let database: Box<dyn Database> = match Command::check_for_database(matches.value_of("database"))?
   {
-    DatabaseType::Aws => Box::new(Aws::init(&Config::from_file_or_default()?).await?),
-    DatabaseType::Azure => Box::new(Azure::init(&Config::from_file_or_default()?).await?),
+    DatabaseType::Aws => Box::new(Aws::init(&Config::init(None)?).await?),
+    DatabaseType::Azure => Box::new(Azure::init(&Config::init(None)?).await?),
     DatabaseType::Local => Box::new(JSON::init()?),
   };
 
@@ -149,7 +149,7 @@ async fn run() -> Result<()> {
     Command::output_burndown(matches, database).await?;
   } else {
     let (board, decks) =
-      Command::show_score(&Config::from_file_or_default()?, &matches, &database).await?;
+      Command::show_score(&Config::init(matches.value_of("kanban"))?, &matches, &database).await?;
 
     if matches.is_present("save") && matches.value_of("save").unwrap() == "true" {
       database

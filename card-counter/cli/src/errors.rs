@@ -33,3 +33,14 @@ impl fmt::Display for JsonParseError {
     write!(f, "Unable to parse response from {} as JSON.", self.0)
   }
 }
+
+#[derive(Debug)]
+pub struct KanbanParseError(pub String);
+
+impl Error for KanbanParseError {}
+
+impl fmt::Display for KanbanParseError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "String {} does not match \"trello\" or \"jira\".", self.0)
+  }
+}
