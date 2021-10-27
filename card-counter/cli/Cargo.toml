@@ -25,7 +25,7 @@ hyper = "0.14.4"
 
 # TUI
 clap = "2.33.0"
-dialoguer = { git = "https://github.com/justinbarclay/dialoguer"}
+dialoguer = { git = "https://github.com/mitsuhiko/dialoguer", commit = "028aaf6fb7af8980634b66df63f417e121dbb907" }
 prettytable-rs = "0.8"
 pointplots = {git = "https://github.com/justinbarclay/pointplots-rs.git"}
 tera = "1.12.1"

@@ -47,7 +47,6 @@ fn select_date(keys: &[i64]) -> Option<i64> {
   match Select::new()
     .with_prompt("Compare board with record at: ")
     .items(&items)
-    .paged(true)
     .max_length(15)
     .default(0)
     .interact()

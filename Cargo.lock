@@ -388,13 +388,13 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.14.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993e6445baa160675931ec041a5e03ca84b9c6e32a056150d3aa2bdda0a1f45"
+checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
 dependencies = [
  "encode_unicode",
- "lazy_static",
  "libc",
+ "once_cell",
  "regex",
  "terminal_size",
  "unicode-width",
@@ -497,8 +497,8 @@ checksum = "850878694b7933ca4c9569d30a34b55031b9b139ee1fc7b94a527c4ef960d690"
 
 [[package]]
 name = "dialoguer"
-version = "0.8.0"
-source = "git+https://github.com/justinbarclay/dialoguer#4f84c8af06b23a99170bd71d6dc0f9a73e3a8b7c"
+version = "0.9.0"
+source = "git+https://github.com/mitsuhiko/dialoguer#028aaf6fb7af8980634b66df63f417e121dbb907"
 dependencies = [
  "console",
  "lazy_static",

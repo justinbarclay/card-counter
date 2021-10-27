@@ -175,7 +175,7 @@ impl Kanban for TrelloClient {
       .with_prompt("Select a board: ")
       .items(&board_names)
       .default(0)
-      .paged(true)
+      .max_length(15)
       .interact()
       .wrap_err_with(|| "There was an error while trying to select a board.")?;
 
