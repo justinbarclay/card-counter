@@ -24,6 +24,17 @@ Unauthorized request to Jira API")
 }
 
 #[derive(Debug)]
+pub struct ConfigError(pub String);
+
+impl Error for ConfigError {}
+
+impl fmt::Display for ConfigError {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}", self.0)
+  }
+}
+
+#[derive(Debug)]
 pub struct JsonParseError(pub String);
 
 impl Error for JsonParseError {}
@@ -41,6 +52,10 @@ impl Error for KanbanParseError {}
 
 impl fmt::Display for KanbanParseError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "String {} does not match \"trello\" or \"jira\".", self.0)
+    write!(
+      f,
+      "String {} does not match \"trello\" or \"jira\".",
+      self.0
+    )
   }
 }

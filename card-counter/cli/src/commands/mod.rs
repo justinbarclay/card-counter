@@ -27,7 +27,7 @@ impl Command {
         Ok(DatabaseType::Local)
       }
       (None, Some(config)) => Ok(config.database),
-      (None, None) =>{
+      (None, None) => {
         println!("No database chosen, defaulting to local.");
         Ok(DatabaseType::Local)
       }
@@ -46,8 +46,7 @@ impl Command {
 
     if matches.is_present("compare") {
       if let Some(old_entries) = client.query_entries(board.id.to_string(), None).await? {
-        // TODO: Fix this old_decks could be empty
-        let old_decks = get_decks_by_date(old_entries).unwrap();
+        let old_decks = get_decks_by_date(old_entries).unwrap_or(vec![]);
         print_delta(&decks, &old_decks, &board.name, filter);
       } else {
         println!("Unable to retrieve any decks from the database.");

@@ -8,10 +8,8 @@ use std::io::prelude::*;
 use std::io::{BufReader, BufWriter, SeekFrom};
 use std::str::FromStr;
 
-
 use super::DatabaseType;
 use crate::database::json::config_file;
-
 
 use crate::{errors::*, kanban::trello::TrelloAuth};
 
@@ -72,27 +70,24 @@ impl Default for KanbanBoard {
   }
 }
 
-impl FromStr for KanbanBoard{
-    type Err = KanbanParseError;
+impl FromStr for KanbanBoard {
+  type Err = KanbanParseError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-      match s.to_lowercase().as_str() {
-        "trello" => Ok(KanbanBoard::Trello(TrelloAuth::default())),
-        "jira" => Ok(KanbanBoard::Jira(JiraAuth::default())),
-        no_match => Err(KanbanParseError(no_match.to_string()))
-      }
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s.to_lowercase().as_str() {
+      "trello" => Ok(KanbanBoard::Trello(TrelloAuth::default())),
+      "jira" => Ok(KanbanBoard::Jira(JiraAuth::default())),
+      no_match => Err(KanbanParseError(no_match.to_string())),
     }
+  }
 }
 
-impl KanbanBoard{
+impl KanbanBoard {
   fn from_env(kanban: &str) -> Option<KanbanBoard> {
-    match KanbanBoard::from_str(kanban){
-      Ok(KanbanBoard::Trello(_)) => {
-        trello_auth_from_env().map(KanbanBoard::Trello)}
-      ,
-      Ok(KanbanBoard::Jira(_)) => {
-        jira_auth_from_env().map(KanbanBoard::Jira)},
-      Err(_) => None
+    match KanbanBoard::from_str(kanban) {
+      Ok(KanbanBoard::Trello(_)) => trello_auth_from_env().ok().map(KanbanBoard::Trello),
+      Ok(KanbanBoard::Jira(_)) => jira_auth_from_env().ok().map(KanbanBoard::Jira),
+      Err(_) => None,
     }
   }
 }
@@ -322,9 +317,12 @@ impl Config {
   // Handles the setup for the app, mostly checking for key and token and giving the proper prompts to the user to get the right info.
   pub fn check_for_auth() -> Result<Option<TrelloAuth>> {
     match (trello_auth_from_env(), Config::from_file()?) {
-      (Some(env), _) => Ok(Some(env)),
-      (None, Some(config)) => Ok(config.trello_auth()),
-      (None, None) => Ok(Some(TrelloAuth::default()))
+      (Ok(env), _) => Ok(Some(env)),
+      (Err(_), Some(config)) => Ok(config.trello_auth()),
+      (Err(e), None) => {
+        eprintln!("{}", e);
+        Ok(Some(TrelloAuth::default()))
+      }
     }
   }
 
@@ -360,7 +358,6 @@ impl Config {
     Ok(())
   }
 
-
   pub fn from_file_or_default() -> Result<Config> {
     match Config::from_file()? {
       Some(config) => Ok(config),
@@ -368,12 +365,11 @@ impl Config {
     }
   }
 
-
   pub fn init(kanban: Option<&str>) -> Result<Config> {
     let config = Config::from_file_or_default()?;
     if let Some(auth) = KanbanBoard::from_env(kanban.unwrap_or(&config.kanban.to_string())) {
-      Ok(Config{
-       kanban: auth,
+      Ok(Config {
+        kanban: auth,
         ..config
       })
     } else {
@@ -382,7 +378,7 @@ impl Config {
   }
 
   pub fn trello_auth(self) -> Option<TrelloAuth> {
-    if let Some(auth) = trello_auth_from_env() {
+    if let Ok(auth) = trello_auth_from_env() {
       return Some(auth);
     }
     match self.kanban {
@@ -395,7 +391,7 @@ impl Config {
   }
 
   pub fn jira_auth(self) -> Option<JiraAuth> {
-    if let Some(auth) = jira_auth_from_env() {
+    if let Ok(auth) = jira_auth_from_env() {
       return Some(auth);
     }
 
@@ -409,82 +405,68 @@ impl Config {
   }
 }
 
-pub fn trello_auth_from_env() -> Option<TrelloAuth> {
-  let key: String = match env::var("TRELLO_API_KEY") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
-      return None;
-    }
+pub fn trello_auth_from_env() -> Result<TrelloAuth> {
+  let key: String = if let Ok(value) = env::var("TRELLO_API_KEY") {
+    value
+  } else {
+    return Err(eyre!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"".to_string()));
   };
 
-  let token: String = match env::var("TRELLO_API_TOKEN") {
-    Ok(value) => value,
-    Err(_) => {
-      eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
-      return None;
-    }
+  let token: String = if let Ok(value) = env::var("TRELLO_API_TOKEN") {
+    value
+  } else {
+    return Err(eyre!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN".to_string()));
   };
 
   if key.is_empty() {
-    eprintln!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"");
-    return None;
-  }
+    return Err(eyre!("Trello API key not found. Please visit https://trello.com/app-key and set it as the environment variable \"TRELLO_API_KEY\"".to_string()));
+  };
   if token.is_empty() {
-    eprintln!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN", key);
-    return None;
-  }
-  Some(TrelloAuth {
+    return Err(eyre!("Trello API token is missing. Please visit https://trello.com/1/authorize?expiration=1day&name=card-counter&scope=read&response_type=token&key={}\n and set the token as the environment variable TRELLO_API_TOKEN"));
+  };
+  Ok(TrelloAuth {
     key,
     token,
     expiration: "".to_string(),
   })
 }
 
-fn jira_auth_from_env() -> Option<JiraAuth> {
+fn jira_auth_from_env() -> Result<JiraAuth> {
   let username: String = match env::var("JIRA_USERNAME") {
     Ok(value) => value,
     Err(_) => {
-      eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
+      return Err(eyre!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"
+For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ ".to_string()));
     }
   };
 
   let api_token: String = match env::var("JIRA_API_TOKEN") {
     Ok(value) => value,
     Err(_) => {
-      eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-      return None;
+      return Err(eyre!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN"));
     }
   };
 
   let url: String = match env::var("JIRA_URL") {
     Ok(value) => value,
     Err(_) => {
-      eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-      eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-      return None;
+      return Err(eyre!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\""));
     }
   };
 
   if username.is_empty() {
-    eprintln!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"");
-    eprintln!("For more information visitvisit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more info. and");
-    return None;
+    return Err(eyre!("Jira username not found. Please set the environment variable \"JIRA_USERNAME\"
+For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ ".to_string()));
   }
   if api_token.is_empty() {
-    eprintln!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN");
-    return None;
+    return Err(eyre!("Jira API token is missing. Generate a token at https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ and\n and set the token as the environment variable JIRA_API_TOKEN"));
   }
 
   if url.is_empty() {
-    eprintln!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\"");
-    eprintln!("For more information visit https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/ for more information");
-    return None;
+    return Err(eyre!("Jira URL is missing. Set the base URL for your Jira account in the environment variable \"JIRA_URL\""));
   }
 
-  Some(JiraAuth {
+  Ok(JiraAuth {
     username,
     api_token,
     url,

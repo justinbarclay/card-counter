@@ -148,8 +148,12 @@ async fn run() -> Result<()> {
   if let Some(matches) = matches.subcommand_matches("burndown") {
     Command::output_burndown(matches, database).await?;
   } else {
-    let (board, decks) =
-      Command::show_score(&Config::init(matches.value_of("kanban"))?, &matches, &database).await?;
+    let (board, decks) = Command::show_score(
+      &Config::init(matches.value_of("kanban"))?,
+      &matches,
+      &database,
+    )
+    .await?;
 
     if matches.is_present("save") && matches.value_of("save").unwrap() == "true" {
       database
