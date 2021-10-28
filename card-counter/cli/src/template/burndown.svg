@@ -1,7 +1,7 @@
 <?xml version="1.0" standalone="no"?>
 <svg width="{{width + padding * 2 + 25}}"
-     height="{{height + padding * 2}}"
-     viewBox="0 0 {{width + padding}} {{height + padding *2}}"
+     height="{{height + padding * 4}}"
+     viewBox="0 0 {{width + padding * 2 + 25}} {{height + padding * 4}}"
      preserveAspectRatio="xMidYMid meet"
      xmlns="http://www.w3.org/2000/svg">
   {% set y_label_length =  y_labels | length - 1 %}
@@ -9,15 +9,15 @@
   {% if loop.first == true %}
   <!-- Bottom Line-->
   {% set offset_y = padding%}
-  <path stroke="#74838f" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  <path stroke="{{default_colour}}" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
   {% elif loop.last == true %}
   <!-- Top Line -->
   {% set offset_y = padding + height %}
-  <path stroke="#74838f" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  <path stroke="{{default_colour}}" stroke-width="2" fill="none"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
   {% else %}
   <!-- Dashed line-->
   {% set offset_y = padding + loop.index0/y_label_length * height %}
-  <path stroke="#74838f" stroke-dasharray="10 6" stroke-width="0.5"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
+  <path stroke="{{default_colour}}" stroke-dasharray="10 6" stroke-width="0.5"  d="M {{padding}} {{offset_y}} L {{width + padding}} {{offset_y}}" />
   {% endif %}
 
   <!-- Y axis labels-->
@@ -28,7 +28,7 @@
     dominant-baseline="middle"
     text-anchor="end"
     font-size="12"
-    fill="#74838f"
+    fill="{{default_colour}}"
     font-weight="bold"
     >
     {{label | round}}
@@ -39,9 +39,9 @@
   {% for label in x_labels %}
   {% set offset_x = padding + loop.index0/x_label_length * width %}
   <!-- Bottom ticks -->
-  <path stroke="#74838f" stroke-width="2.0" d="M {{offset_x}} {{height + padding}} L {{offset_x}} {{height + padding + 10}}" />
+  <path stroke="{{default_colour}}" stroke-width="2.0" d="M {{offset_x}} {{height + padding}} L {{offset_x}} {{height + padding + 10}}" />
 
-  <!-- Y axis labels-->
+  <!-- X axis labels-->
   <text
     x="{{offset_x + 30}}"
     font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto"
@@ -49,7 +49,7 @@
     dominant-baseline="middle"
     text-anchor="end"
     font-size="12"
-    fill="#74838f"
+    fill="{{default_colour}}"
     font-weight="bold"
     >
     {{label}}
@@ -67,8 +67,40 @@
         dominant-baseline="middle" 
         text-anchor="middle" 
         font-size="18" 
-        fill="#74838f" 
+        fill="{{default_colour}}" 
         font-weight="700">
     {{name}}
+  </text>
+
+  <!-- Legends -->
+  {% set middle_x = (width + padding * 2)  / 2 %}
+  {% set offset_y = height + padding * 2 + 15 %}
+  {% set legend_text_width = 150 %}
+  <rect x="{{middle_x - legend_text_width - legend_rect_width}}" 
+        y="{{offset_y - legend_rect_height}}" 
+        width="{{legend_rect_width}}" 
+        height="{{legend_rect_height}}" 
+        fill="{{complete_colour}}"
+  />
+  <text x="{{middle_x - legend_text_width + 15}}"
+        y="{{offset_y}}" 
+        font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto" 
+        font-size="14" 
+        fill="{{default_colour}}">
+    Points Remaining
+  </text>
+
+  <rect x="{{middle_x + 30}}" 
+        y="{{offset_y - legend_rect_height}}" 
+        width="{{legend_rect_width}}"
+        height="{{legend_rect_height}}" 
+        fill="{{incomplete_colour}}"
+  />
+  <text x="{{middle_x + legend_rect_width + 15 + 30}}"
+        y="{{offset_y}}" 
+        font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto" 
+        font-size="14" 
+        fill="{{default_colour}}" >
+    Points Completed
   </text>
 </svg>

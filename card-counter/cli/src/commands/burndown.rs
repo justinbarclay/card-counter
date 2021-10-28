@@ -319,12 +319,15 @@ impl Burndown {
     context.insert("width", &width);
     context.insert("height", &height);
     context.insert("padding", &padding);
+    context.insert("default_colour", "#74838F");
     context.insert("incomplete_path", &incomplete_path);
     context.insert("incomplete_colour", "#D2222D");
     context.insert("complete_path", &complete_path);
     context.insert("complete_colour", "#238823");
     context.insert("max_y", &max_y);
     context.insert("y_labels", &[0., (max_y / 2.).round(), max_y]);
+    context.insert("legend_rect_width", &50);
+    context.insert("legend_rect_height", &10);
 
     let mid_date = (max_x - min_x) / 2. + min_x;
     context.insert(
