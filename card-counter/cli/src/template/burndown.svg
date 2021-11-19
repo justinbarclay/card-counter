@@ -87,7 +87,7 @@
         font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto" 
         font-size="14" 
         fill="{{default_colour}}">
-    Points Remaining
+    Points Completed
   </text>
 
   <rect x="{{middle_x + 30}}" 
@@ -101,6 +101,6 @@
         font-family="-apple-system, system-ui, BlinkMacSystemFont, Roboto" 
         font-size="14" 
         fill="{{default_colour}}" >
-    Points Completed
+    Points Remaining
   </text>
 </svg>
