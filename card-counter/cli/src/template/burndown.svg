@@ -80,7 +80,7 @@
         y="{{offset_y - legend_rect_height}}" 
         width="{{legend_rect_width}}" 
         height="{{legend_rect_height}}" 
-        fill="{{complete_colour}}"
+        fill="{{incomplete_colour}}"
   />
   <text x="{{middle_x - legend_text_width + 15}}"
         y="{{offset_y}}" 
@@ -94,7 +94,7 @@
         y="{{offset_y - legend_rect_height}}" 
         width="{{legend_rect_width}}"
         height="{{legend_rect_height}}" 
-        fill="{{incomplete_colour}}"
+        fill="{{complete_colour}}"
   />
   <text x="{{middle_x + legend_rect_width + 15 + 30}}"
         y="{{offset_y}}" 
