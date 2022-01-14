@@ -17,6 +17,7 @@ Resources:
           TRELLO_API_KEY: <your-key>
           TRELLO_API_TOKEN: <your-token>
           BUCKET_NAME: <your-bucket-here>
+          DEFAULT_BOARD_ID: <your-default-board-id>
       Events:
         Api:
           Type: Api

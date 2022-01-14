@@ -61,7 +61,18 @@ fn default_gateway_response(body: SlackBlock) -> ApiGatewayProxyResponse {
 
 /// you can invoke the lambda with a JSON payload, which is parsed using the CustomEvent struct.
 async fn my_handler(event: SlackCommand) -> Result<SlackBlock> {
-  let config = match BurndownConfig::from_str(&event.text) {
+  // If we use the two_weeks method we should tell them what command we ran for them
+  let mut using_two_weeks = false;
+  let command = match event.text.trim().is_empty() {
+    true => {
+      using_two_weeks = true;
+      Ok(BurndownConfig::for_two_weeks_ago(
+        std::env::var("DEFAULT_BOARD_ID").ok(),
+      ))
+    }
+    false => BurndownConfig::from_str(&event.text),
+  };
+  let config = match command {
     Ok(config) => config,
     Err(_) => {
       return Ok(SlackBlock {
@@ -98,26 +109,30 @@ async fn my_handler(event: SlackCommand) -> Result<SlackBlock> {
   let date_range = format!("{}_{}", &start, &end);
   upload_chart_to_s3(&chart, &bucket, &date_range).await?;
 
-  let mut text = HashMap::new();
-  text.insert("type".to_string(), "mrkdwn".to_string());
-  text.insert("text".to_string(), format!("Click <http://{}.s3-website.{}.amazonaws.com/?date_range={}| here> to view your burndown chart.",
-                                          &bucket,
-                                          Region::default().name(),
-                                          &date_range));
+  let mut blocks = vec![];
 
-  let block = SlackBlock {
-    blocks: vec![SlackMessage {
-      slack_type: "section".to_string(),
-      text: Some(text),
-      ..SlackMessage::default()
-    }],
-    response_type: Some("in_channel".to_string())
-  };
-  Ok(block)
+  let link = SlackMessage::markdown(format!("Click <http://{}.s3-website.{}.amazonaws.com/?date_range={}| here> to view your burndown chart.",
+                       &bucket,
+                       Region::default().name(),
+                       &date_range));
+  blocks.push(link);
+  if using_two_weeks {
+    let message = SlackMessage::markdown(format!("I ran the command `/card-counter burndown from {} to {} for {}` for you, if that is not what you want please type `/card-counter help` instead.",
+                       &start,
+                       &end,
+                       &board_id));
+    blocks.push(message);
+  }
+
+  Ok(SlackBlock {
+    blocks,
+    response_type: Some("in_channel".to_string()),
+  })
 }
+
 async fn upload_chart_to_s3(chart: &str, bucket: &str, date_range: &str) -> Result<()> {
   let client = S3Client::new(Region::default());
-
+  info!("{}", bucket);
   let filename = format!("burndown-{}.svg", date_range);
   let req = PutObjectRequest {
     bucket: bucket.to_string(),

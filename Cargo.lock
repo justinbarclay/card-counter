@@ -225,6 +225,7 @@ version = "0.1.0"
 dependencies = [
  "aws_lambda_events",
  "card-counter",
+ "chrono",
  "eyre",
  "http",
  "lambda_runtime",

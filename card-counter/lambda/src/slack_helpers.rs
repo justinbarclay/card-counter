@@ -1,5 +1,5 @@
 /// Helper functions for dealing with Slack
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +24,7 @@ pub struct SlackCommand {
 pub struct SlackBlock {
   pub blocks: Vec<SlackMessage>,
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub response_type: Option<String>
+  pub response_type: Option<String>,
 }
 #[derive(Debug, Serialize, Default)]
 pub struct SlackMessage {
@@ -41,7 +41,19 @@ pub struct SlackMessage {
   #[serde(skip_serializing_if = "Option::is_none")]
   pub alt_text: Option<String>,
 }
+impl SlackMessage {
+  pub fn markdown(message: String) -> SlackMessage {
+    let mut text = HashMap::new();
+    text.insert("type".to_string(), "mrkdwn".to_string());
+    text.insert("text".to_string(), message);
 
+    SlackMessage {
+      slack_type: "section".to_string(),
+      text: Some(text),
+      ..SlackMessage::default()
+    }
+  }
+}
 pub fn context_error(message: String) -> SlackMessage {
   let mut context: HashMap<String, String> = HashMap::new();
   context.insert("type".to_string(), "mrkdwn".to_string());

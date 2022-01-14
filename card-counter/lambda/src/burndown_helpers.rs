@@ -1,7 +1,10 @@
 /// A set of helper functions for dealing with generating burndown charts
-use card_counter::{commands::burndown::{BurndownOptions}, database::{Database, DateRange, aws::Aws, config::{Config, trello_auth_from_env}}, errors::*, kanban::{Kanban, trello::{TrelloClient}}};
+use card_counter::{commands::burndown::BurndownOptions,
+                   database::{Database, DateRange, aws::Aws, config::{Config, trello_auth_from_env}},
+                   errors::*,
+                   kanban::{Kanban, trello::TrelloClient}};
 use std::{str::FromStr, string::ParseError};
-
+use chrono::prelude::*;
 use log::{info};
 
 
@@ -22,6 +25,15 @@ impl BurndownConfig {
       ))
     } else {
       None
+    }
+  }
+  pub fn for_two_weeks_ago(board_id: Option<String>) -> BurndownConfig{
+    let today = Utc::now().timestamp() + (24 * 3600);
+    let two_weeks_ago = today - (2 * 7 * 24 * 3600);
+    BurndownConfig {
+      start:  Some(Utc.timestamp(two_weeks_ago, 0).format("%Y-%m-%d").to_string()),
+      end: Some(Utc.timestamp(today, 0).format("%Y-%m-%d").to_string()),
+      board_id: board_id
     }
   }
 }
@@ -56,8 +68,6 @@ impl FromStr for BurndownConfig {
     Ok(config)
   }
 }
-
-
 
 // Often times a user will use the boards shortLink, this is an 8
 // character string, but we store the index in dynamodb as the board's
