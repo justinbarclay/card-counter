@@ -1,12 +1,17 @@
 /// A set of helper functions for dealing with generating burndown charts
-use card_counter::{commands::burndown::BurndownOptions,
-                   database::{Database, DateRange, aws::Aws, config::{Config, trello_auth_from_env}},
-                   errors::*,
-                   kanban::{Kanban, trello::TrelloClient}};
-use std::{str::FromStr, string::ParseError};
+use card_counter::{
+  commands::burndown::BurndownOptions,
+  database::{
+    aws::Aws,
+    config::{trello_auth_from_env, Config},
+    Database, DateRange,
+  },
+  errors::*,
+  kanban::{trello::TrelloClient, Kanban},
+};
 use chrono::prelude::*;
-use log::{info};
-
+use log::info;
+use std::{str::FromStr, string::ParseError};
 
 #[derive(Debug, PartialEq)]
 pub struct BurndownConfig {
@@ -27,13 +32,18 @@ impl BurndownConfig {
       None
     }
   }
-  pub fn for_two_weeks_ago(board_id: Option<String>) -> BurndownConfig{
+  pub fn for_two_weeks_ago(board_id: Option<String>) -> BurndownConfig {
     let today = Utc::now().timestamp() + (24 * 3600);
     let two_weeks_ago = today - (2 * 7 * 24 * 3600);
     BurndownConfig {
-      start:  Some(Utc.timestamp(two_weeks_ago, 0).format("%Y-%m-%d").to_string()),
+      start: Some(
+        Utc
+          .timestamp(two_weeks_ago, 0)
+          .format("%Y-%m-%d")
+          .to_string(),
+      ),
       end: Some(Utc.timestamp(today, 0).format("%Y-%m-%d").to_string()),
-      board_id: board_id
+      board_id,
     }
   }
 }
@@ -76,7 +86,7 @@ impl FromStr for BurndownConfig {
 pub async fn get_full_board_id(board_id: String) -> Result<String> {
   let client = TrelloClient {
     client: reqwest::Client::new(),
-    auth: trello_auth_from_env().unwrap()
+    auth: trello_auth_from_env().unwrap(),
   };
 
   if board_id.len() == 24 {
@@ -93,8 +103,11 @@ pub fn validate_env_vars() -> Result<()> {
   Ok(())
 }
 
-
-pub async fn generate_burndown_chart(start: &str, end: &str, board_id: &str) -> eyre::Result<String> {
+pub async fn generate_burndown_chart(
+  start: &str,
+  end: &str,
+  board_id: &str,
+) -> eyre::Result<String> {
   let client: Box<dyn Database> = Box::new(Aws::init(&Config::default()).await?);
 
   let range = DateRange::from_strs(start, end);

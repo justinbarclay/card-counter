@@ -7,16 +7,14 @@ use card_counter::errors::*;
 
 use std::{collections::HashMap, str::FromStr};
 
-use rusoto_core::Region;
-use rusoto_s3::{PutObjectRequest, S3Client, S3};
 use aws_lambda_events::encodings::Body;
 use aws_lambda_events::event::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
-use lambda::{handler_fn, Context};
 use http::header::{HeaderMap, CONTENT_TYPE};
-
+use lambda::{handler_fn, Context};
+use rusoto_core::Region;
+use rusoto_s3::{PutObjectRequest, S3Client, S3};
 
 use log::{error, info};
-
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -79,7 +77,7 @@ async fn my_handler(event: SlackCommand) -> Result<SlackBlock> {
         blocks: vec![context_error(
           BurndownConfig::default().helper_string().unwrap(),
         )],
-        response_type: None
+        response_type: None,
       })
     }
   };
@@ -87,7 +85,7 @@ async fn my_handler(event: SlackCommand) -> Result<SlackBlock> {
   if let Some(help) = config.helper_string() {
     return Ok(SlackBlock {
       blocks: vec![context_error(help)],
-      response_type: None
+      response_type: None,
     });
   }
   let start = config.start.unwrap();
